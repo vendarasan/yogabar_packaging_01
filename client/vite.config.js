@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: 'localhost',
+    watch: {
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**']
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5001',

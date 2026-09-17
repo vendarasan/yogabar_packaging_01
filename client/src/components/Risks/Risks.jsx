@@ -9,8 +9,8 @@ export default function Risks() {
           <div className="table-title">⚠️ Risk Register — Standard Packaging Risks &amp; Mitigations</div>
           <div style={{ fontSize: '11px', color: 'var(--white-dim)' }}>Pre-identified risk scenarios for FMCG packaging projects</div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table>
+        <div className="modern-mat-table-wrap" style={{ margin: '16px' }}>
+          <table className="modern-mat-table">
             <thead>
               <tr>
                 <th style={{ width: '60px' }}>Risk ID</th>
@@ -18,7 +18,7 @@ export default function Risks() {
                 <th>Description</th>
                 <th style={{ width: '70px' }}>Impact</th>
                 <th style={{ width: '70px' }}>Probability</th>
-                <th style={{ width: '70px' }}>Risk Level</th>
+                <th style={{ width: '80px' }}>Risk Level</th>
                 <th>Mitigation Strategy</th>
                 <th style={{ width: '100px' }}>Owner</th>
                 <th style={{ width: '80px' }}>Status</th>

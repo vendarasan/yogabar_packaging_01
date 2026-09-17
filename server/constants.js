@@ -2,17 +2,186 @@
 const STAGE_ORDER = ['Brief','Sample','Trial','KLD','Artwork','VPDF','Printing','Dispatch','Connectivity','Launch'];
 const STAGE_COLORS = {Brief:'#7c4dff',Sample:'#00b0ff',Trial:'#00bfa5',KLD:'#ffd740',Artwork:'#ff6d00',VPDF:'#e040fb',Printing:'#76ff03',Dispatch:'#ff4081',Connectivity:'#40c4ff',Launch:'#00e676'};
 const STAGE_PCT = {Brief:10,Sample:20,Trial:30,KLD:40,Artwork:50,VPDF:60,Printing:70,Dispatch:80,Connectivity:90,Launch:100};
-const PRINT_LEAD = {'Digital Print':10,'Flexo Print':20,'Gravure Print':35,'Not Applicable':0};
+const PRINT_LEAD = {'Digital Print':15,'Flexo Print':21,'Gravure Print':35,'Not Applicable':0};
 const STAGE_LEAD = {Sample:5,Trial:7,KLD:3,Artwork:5,VPDF:2,Dispatch:4,Connectivity:4};
 
 const MAT_TYPES = [
-  'PET Bottle','HDPE Bottle','Glass Bottle','Glass Jar','Laminated Tube','Aluminium Can',
-  'Aerosol Can','Flexible Pouch','Stand-up Pouch','Sachet / Stick Pack','Carton Box',
-  'Corrugated Shipper','Paper Label','PP Label','Shrink Sleeve','In-Mould Label',
-  'Thermoform Tray','Blister Pack','Cap / Closure','Pump Dispenser','Liner / Foil Seal',
-  'Insert / Leaflet','Other'
+  'PET Bottle',
+  'HDPE Bottle',
+  'Glass Bottle',
+  'Flexible Pouch',
+  'Stand-up Pouch',
+  'Sachet / Stick Pack',
+  'Monocarton',
+  'Eflute',
+  'Rigid Carton Box',
+  'Corrugated Shipper',
+  'Paper Label',
+  'PP Label',
+  'Shrink Sleeve',
+  'In-Mould Label',
+  'Cap / Closure',
+  'Pump Dispenser',
+  'Liner / Foil Seal',
+  'Laminated Tube',
+  'Aluminium/Tin Can',
+  'Aerosol Can',
+  'Thermoform Tray',
+  'Blister Pack',
+  'Insert / Leaflet',
+  'Other'
 ];
 const PRINT_TYPES = ['Digital Print','Flexo Print','Gravure Print','Not Applicable'];
+
+const POUCH_MAT_TYPES = ['Flexible Pouch', 'Stand-up Pouch', 'Sachet / Stick Pack'];
+const POUCH_PRINT_LEAD = {
+  'Digital Print': 15,
+  'Flexo Print': 21,
+  'Gravure Print': 35
+};
+
+const MAT_LEAD_DAYS = {
+  'PET Bottle': 30,
+  'HDPE Bottle': 30,
+  'Glass Bottle': 30,
+  'Glass Jar': 30,
+  'Laminated Tube': 45,
+  'Aluminium/Tin Can': 30,
+  'Aluminium Can': 30,
+  'Aerosol Can': 45,
+  'Flexible Pouch': 21,
+  'Stand-up Pouch': 21,
+  'Sachet / Stick Pack': 21,
+  'Monocarton': 15,
+  'Eflute': 15,
+  'Rigid Carton Box': 30,
+  'Rigid Caarton Box': 30,
+  'Corrugated Shipper': 10,
+  'Paper Label': 20,
+  'PP Label': 20,
+  'Shrink Sleeve': 20,
+  'In-Mould Label': 30,
+  'Thermoform Tray': 25,
+  'Blister Pack': 25,
+  'Cap / Closure': 30,
+  'Pump Dispenser': 30,
+  'Liner / Foil Seal': 20,
+  'Insert / Leaflet': 10,
+  'Other': 15
+};
+
+function isPouch(type) {
+  return POUCH_MAT_TYPES.includes(type);
+}
+
+function getMaterialLeadTime(m) {
+  if (!m) return 15;
+  const type = typeof m === 'string' ? m : (m.type || m.materialType);
+  const printType = typeof m === 'object' ? m.printType : null;
+  const customLead = typeof m === 'object' ? m.customLeadTime : null;
+
+  if (isPouch(type)) {
+    if (printType && POUCH_PRINT_LEAD[printType]) {
+      return POUCH_PRINT_LEAD[printType];
+    }
+    return 21;
+  }
+  if (customLead !== undefined && customLead !== null && customLead !== '') {
+    const val = parseInt(customLead, 10);
+    if (!isNaN(val)) return val;
+  }
+  if (MAT_LEAD_DAYS[type] !== undefined) {
+    return MAT_LEAD_DAYS[type];
+  }
+  return 15;
+}
+
+const PKG_HIERARCHY_TIERS = {
+  // Tier 1: Primary Packaging Containers (Highest Priority: Rank 1)
+  'Flexible Pouch': 1,
+  'Stand-up Pouch': 1,
+  'Sachet / Stick Pack': 1,
+  'PET Bottle': 1,
+  'HDPE Bottle': 1,
+  'Glass Bottle': 1,
+  'Glass Jar': 1,
+  'Laminated Tube': 1,
+  'Aluminium/Tin Can': 1,
+  'Aluminium Can': 1,
+  'Aerosol Can': 1,
+  'Blister Pack': 1,
+  'Thermoform Tray': 1,
+
+  // Tier 2: Primary Closures & Dispensing (Rank 2)
+  'Cap / Closure': 2,
+  'Pump Dispenser': 2,
+  'Liner / Foil Seal': 2,
+
+  // Tier 3: Primary Decoration & Labels (Rank 3)
+  'Shrink Sleeve': 3,
+  'In-Mould Label': 3,
+  'PP Label': 3,
+  'Paper Label': 3,
+
+  // Tier 4: Secondary Packaging (Unit Boxes / Outer Retail) (Rank 4)
+  'Monocarton': 4,
+  'Eflute': 4,
+  'Rigid Carton Box': 4,
+  'Rigid Caarton Box': 4,
+  'Carton Box': 4,
+  'Insert / Leaflet': 4,
+
+  // Tier 5: Tertiary & Outer Transport (Rank 5 - Lowest Priority)
+  'Corrugated Shipper': 5,
+  'Other': 6
+};
+
+function getMaterialHierarchyTier(matType) {
+  return PKG_HIERARCHY_TIERS[matType] || 5;
+}
+
+function getTierName(tier) {
+  switch (tier) {
+    case 1: return 'Primary Container';
+    case 2: return 'Primary Closure';
+    case 3: return 'Primary Label';
+    case 4: return 'Secondary Box';
+    case 5: return 'Tertiary Shipper';
+    default: return 'Ancillary Pack';
+  }
+}
+
+function determineCPMIndex(mats) {
+  if (!mats || !mats.length) return -1;
+  let maxConnDate = '';
+  mats.forEach(m => {
+    const c = m.milestones?.Connectivity || '';
+    if (c > maxConnDate) maxConnDate = c;
+  });
+
+  const tiedCandidates = mats
+    .map((m, idx) => ({ m, idx }))
+    .filter(({ m }) => (m.milestones?.Connectivity || '') === maxConnDate);
+
+  if (tiedCandidates.length === 1) {
+    return tiedCandidates[0].idx;
+  }
+
+  tiedCandidates.sort((a, b) => {
+    const tierA = getMaterialHierarchyTier(a.m.type);
+    const tierB = getMaterialHierarchyTier(b.m.type);
+    if (tierA !== tierB) return tierA - tierB;
+
+    const ltA = getMaterialLeadTime(a.m);
+    const ltB = getMaterialLeadTime(b.m);
+    if (ltA !== ltB) return ltB - ltA;
+
+    return a.idx - b.idx;
+  });
+
+  return tiedCandidates[0].idx;
+}
+
 const FUNCTIONS = ['Brand Mgmt','Packaging','Supply Chain','Factory','Procurement','Quality / Reg','Network Planner'];
 
 const RACI_DATA = {
@@ -55,14 +224,228 @@ const STAGE_DEFS = [
 ];
 
 const SEED_USERS = [
-  {email:'admin@company.com',name:'Admin',role:'admin',color:'#7c4dff',defaultPw:'Admin@2024'},
-  {email:'editor@company.com',name:'Editor',role:'editor',color:'#00d4c8',defaultPw:'Editor@2024'}
+  // ── REGULAR VERTICAL ──
+  {
+    email: 'balaji.sathishkumar@company.com',
+    name: 'Balaji Sathishkumar',
+    title: 'Project Manager',
+    role: 'admin',
+    team: 'Regular Vertical',
+    department: 'Regular Vertical Packaging',
+    mobile: '+91 98765 43211',
+    avatar: '',
+    color: '#7c3aed',
+    defaultPw: 'Admin@2024',
+    description: 'Project Manager for Regular Vertical: project creation, timeline governance, stage review, movement revocation, and launch sign-off.'
+  },
+  {
+    email: 'akshra.ojha@company.com',
+    name: 'Akshra Ojha',
+    title: 'Executive',
+    role: 'updater',
+    team: 'Regular Vertical',
+    department: 'Regular Vertical Packaging Execution',
+    mobile: '+91 98765 43212',
+    avatar: '',
+    color: '#00bfa5',
+    defaultPw: 'Updater@2024',
+    description: 'Executive for Regular Vertical: stage advances, technical specifications feeding, PM code & PO tracking.'
+  },
+  {
+    email: 'intern1.regular@company.com',
+    name: 'Intern 1',
+    title: 'Intern',
+    role: 'updater',
+    team: 'Regular Vertical',
+    department: 'Regular Vertical Packaging Execution',
+    mobile: '+91 98765 43215',
+    avatar: '',
+    color: '#14b8a6',
+    defaultPw: 'Intern@2024',
+    description: 'Intern 1 for Regular Vertical: assists Executive with stage tracking, specs entry, and supplier follow-ups.'
+  },
+  {
+    email: 'intern2.regular@company.com',
+    name: 'Intern 2',
+    title: 'Intern',
+    role: 'updater',
+    team: 'Regular Vertical',
+    department: 'Regular Vertical Packaging Execution',
+    mobile: '+91 98765 43216',
+    avatar: '',
+    color: '#06b6d4',
+    defaultPw: 'Intern@2024',
+    description: 'Intern 2 for Regular Vertical: assists Executive with stage tracking, specs entry, and supplier follow-ups.'
+  },
+  {
+    email: 'intern3.regular@company.com',
+    name: 'Intern 3',
+    title: 'Intern',
+    role: 'updater',
+    team: 'Regular Vertical',
+    department: 'Regular Vertical Packaging Execution',
+    mobile: '+91 98765 43217',
+    avatar: '',
+    color: '#0284c7',
+    defaultPw: 'Intern@2024',
+    description: 'Intern 3 for Regular Vertical: assists Executive with stage tracking, specs entry, and supplier follow-ups.'
+  },
+
+  // ── GROWTH VERTICAL ──
+  {
+    email: 'growth.pm@company.com',
+    name: '[Unassigned]',
+    title: 'Project Manager',
+    role: 'admin',
+    team: 'Growth Vertical',
+    department: 'Growth Vertical Packaging',
+    mobile: '',
+    avatar: '',
+    color: '#0284c7',
+    defaultPw: 'Admin@2024',
+    description: 'Project Manager for Growth Vertical: agile project onboarding, Stage 1 crunch review, and quality gates.'
+  },
+  {
+    email: 'manideep@company.com',
+    name: 'Manideep',
+    title: 'Executive',
+    role: 'updater',
+    team: 'Growth Vertical',
+    department: 'Growth Vertical Packaging Execution',
+    mobile: '+91 98765 43214',
+    avatar: '',
+    color: '#ff6d00',
+    defaultPw: 'Updater@2024',
+    description: 'Executive for Growth Vertical: rapid sprint progress, material timelines, specifications, and converter coordination.'
+  },
+  {
+    email: 'intern1.growth@company.com',
+    name: 'Intern 1',
+    title: 'Intern',
+    role: 'updater',
+    team: 'Growth Vertical',
+    department: 'Growth Vertical Packaging Execution',
+    mobile: '+91 98765 43218',
+    avatar: '',
+    color: '#f59e0b',
+    defaultPw: 'Intern@2024',
+    description: 'Intern 1 for Growth Vertical: rapid sprint material tracking, converter updates, and specifications assistance.'
+  },
+  {
+    email: 'intern2.growth@company.com',
+    name: 'Intern 2',
+    title: 'Intern',
+    role: 'updater',
+    team: 'Growth Vertical',
+    department: 'Growth Vertical Packaging Execution',
+    mobile: '+91 98765 43219',
+    avatar: '',
+    color: '#eab308',
+    defaultPw: 'Intern@2024',
+    description: 'Intern 2 for Growth Vertical: rapid sprint material tracking, converter updates, and specifications assistance.'
+  },
+  {
+    email: 'intern3.growth@company.com',
+    name: 'Intern 3',
+    title: 'Intern',
+    role: 'updater',
+    team: 'Growth Vertical',
+    department: 'Growth Vertical Packaging Execution',
+    mobile: '+91 98765 43220',
+    avatar: '',
+    color: '#84cc16',
+    defaultPw: 'Intern@2024',
+    description: 'Intern 3 for Growth Vertical: rapid sprint material tracking, converter updates, and specifications assistance.'
+  }
 ];
 
-const SUPERADMIN = {user:'admin',pass:'Admin@PKG#2024',name:'Super Admin',color:'#ff5252',role:'superadmin'};
+const SUPERADMIN = {
+  user: 'admin',
+  pass: 'Admin@PKG#2024',
+  name: 'Alexsander',
+  title: 'Packaging Head',
+  role: 'superadmin',
+  email: 'alexsander@company.com',
+  mobile: '+91 98765 43210',
+  avatar: '',
+  color: '#ef4444',
+  team: 'Packaging Leadership',
+  department: 'Global Packaging Leadership'
+};
+
+const PO_ACTIONS = ['Raised', 'Under approval', 'RFQ in progress'];
+
+const ROLE_PERMISSIONS = {
+  superadmin: {
+    label: 'Super Admin',
+    badge: '⚡ Super Admin',
+    color: '#ef4444',
+    canCreateProject: true,
+    canDeleteProject: true,
+    canRevokeMovement: true,
+    canAdvanceStage: true,
+    canEditProjectDetails: true,
+    canUpdateFGCode: true,
+    canUpdatePMCode: true,
+    canUpdateSpecs: true,
+    canUpdatePO: true,
+    canUpdateSupplierFactory: true,
+    canResetBriefDate: true,
+    canConfirmLaunch: true,
+    canViewAuditLogs: true,
+    canManageUsers: true,
+    canSignoffSpecs: true,
+    canApproveSpecOverride: true
+  },
+  admin: {
+    label: 'Admin',
+    badge: '🛡 Admin',
+    color: '#7c3aed',
+    canCreateProject: true,
+    canDeleteProject: false,
+    canRevokeMovement: true,
+    canAdvanceStage: true,
+    canEditProjectDetails: true,
+    canUpdateFGCode: true,
+    canUpdatePMCode: true,
+    canUpdateSpecs: true,
+    canUpdatePO: true,
+    canUpdateSupplierFactory: true,
+    canResetBriefDate: true,
+    canConfirmLaunch: true,
+    canViewAuditLogs: true,
+    canManageUsers: false,
+    canSignoffSpecs: true,
+    canApproveSpecOverride: true
+  },
+  updater: {
+    label: 'Updater',
+    badge: '⚡ Updater',
+    color: '#00bfa5',
+    canCreateProject: false,
+    canDeleteProject: false,
+    canRevokeMovement: false,
+    canAdvanceStage: true,
+    canEditProjectDetails: false, // only inline fields
+    canUpdateFGCode: true,
+    canUpdatePMCode: true,
+    canUpdateSpecs: true,
+    canUpdatePO: true,
+    canUpdateSupplierFactory: true,
+    canResetBriefDate: false,
+    canConfirmLaunch: false,
+    canViewAuditLogs: false,
+    canManageUsers: false,
+    canSignoffSpecs: true,
+    canApproveSpecOverride: false
+  }
+};
 
 module.exports = {
   STAGE_ORDER, STAGE_COLORS, STAGE_PCT, PRINT_LEAD, STAGE_LEAD,
   MAT_TYPES, PRINT_TYPES, FUNCTIONS, RACI_DATA, STD_RISKS,
-  STAGE_DEFS, SEED_USERS, SUPERADMIN
+  STAGE_DEFS, SEED_USERS, SUPERADMIN, ROLE_PERMISSIONS,
+  POUCH_MAT_TYPES, POUCH_PRINT_LEAD, MAT_LEAD_DAYS, isPouch, getMaterialLeadTime,
+  PKG_HIERARCHY_TIERS, getMaterialHierarchyTier, getTierName, determineCPMIndex,
+  PO_ACTIONS
 };

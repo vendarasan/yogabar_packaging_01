@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   getMe, logout, getProjects, createProject, updateProject, deleteProject,
   advanceProject, revokeProject, launchProject, changeBriefDate,
-  advanceMaterial, revokeMaterial, saveSpecs, getLogs, getSeenAt
+  advanceMaterial, revokeMaterial, saveSpecs, getLogs, getSeenAt, updateSpecInLibrary
 } from './api';
 
 import AuthScreen from './components/Auth/AuthScreen';
@@ -16,14 +16,66 @@ import Gantt from './components/Gantt/Gantt';
 import StageGuide from './components/StageGuide/StageGuide';
 import RACI from './components/RACI/RACI';
 import Risks from './components/Risks/Risks';
+import SpecsHub from './components/Specs/SpecsHub';
+import ArtworkHub from './components/Artworks/ArtworkHub';
 
-import AddProjectModal from './components/Modals/AddProjectModal';
+import AddProjectPage from './components/Modals/AddProjectModal';
 import LaunchModal from './components/Modals/LaunchModal';
 import BriefModal from './components/Modals/BriefModal';
 import DetailModal from './components/Modals/DetailModal';
 import SpecModal from './components/Tracker/SpecModal';
+import ArtworkViewerModal from './components/Modals/ArtworkViewerModal';
+import UserDirectoryModal from './components/UserManagement/UserDirectoryModal';
+import ProfileModal from './components/Modals/ProfileModal';
 
 import { fmt, getProjectStage } from './utils';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('App view error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '40px 24px',
+          background: 'var(--card-bg)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '12px',
+          margin: '30px auto',
+          maxWidth: '640px',
+          textAlign: 'center',
+          boxShadow: 'var(--shadow-md)'
+        }}>
+          <div style={{ fontSize: '36px', marginBottom: '14px' }}>⚠</div>
+          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+            Something went wrong rendering this view
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px', fontFamily: 'var(--font-mono)', wordBreak: 'break-word', background: 'rgba(0,0,0,0.2)', padding: '10px 14px', borderRadius: '6px' }}>
+            {this.state.error?.message || 'Unexpected rendering error.'}
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            ↻ Reload Tab
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -32,6 +84,9 @@ export default function App() {
   const [projects, setProjects] = useState([]);
   const [logs, setLogs] = useState([]);
   const [seenAt, setSeenAt] = useState(0);
+  const [isUserDirOpen, setIsUserDirOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,14 +96,21 @@ export default function App() {
   // Toast
   const [toast, setToast] = useState(null);
 
-  // Modals
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // Add/Edit Project page nav
+  const [prevTab, setPrevTab] = useState('dashboard');
   const [editProject, setEditProject] = useState(null);
+
+  const openAddProjectPage = (project = null) => {
+    setPrevTab(activeTab);
+    setEditProject(project);
+    setActiveTab('add-project');
+  };
 
   const [launchModalState, setLaunchModalState] = useState({ isOpen: false, project: null });
   const [briefModalState, setBriefModalState] = useState({ isOpen: false, project: null });
-  const [detailModalState, setDetailModalState] = useState({ isOpen: false, project: null });
+  const [detailModalState, setDetailModalState] = useState({ isOpen: false, project: null, initialTab: 'specs' });
   const [specModalData, setSpecModalData] = useState(null);
+  const [artworkViewerState, setArtworkViewerState] = useState({ isOpen: false, project: null, material: null, mIdx: null });
 
   const showToast = (msg, err = false) => {
     setToast({ msg, err });
@@ -111,12 +173,13 @@ export default function App() {
         const res = await createProject(formData);
         showToast(`✨ Created ${res.data.project.projectName}`);
       }
-      setIsAddModalOpen(false);
       setEditProject(null);
+      setActiveTab(prevTab || 'dashboard');
       fetchProjects();
       fetchLogs();
     } catch (e) {
       showToast(e.response?.data?.error || '⚠ Failed to save project', true);
+      throw e;
     }
   };
 
@@ -132,9 +195,9 @@ export default function App() {
     }
   };
 
-  const handleAdvanceProject = async (pid) => {
+  const handleAdvanceProject = async (pid, payload = {}) => {
     try {
-      const res = await advanceProject(pid);
+      const res = await advanceProject(pid, payload);
       showToast(`▶ Advanced to stage: ${getProjectStage(res.data.project)}`);
       fetchProjects();
       fetchLogs();
@@ -179,9 +242,9 @@ export default function App() {
     }
   };
 
-  const handleAdvanceMaterial = async (pid, mIdx) => {
+  const handleAdvanceMaterial = async (pid, mIdx, payload = {}) => {
     try {
-      const res = await advanceMaterial(pid, mIdx);
+      const res = await advanceMaterial(pid, mIdx, payload);
       if (res.data.canLaunch) {
         showToast('🎉 All materials at Connectivity! Ready to launch!');
       } else {
@@ -205,16 +268,29 @@ export default function App() {
     }
   };
 
-  const handleOpenSpecModal = (pid, mIdx) => {
-    const p = projects.find(x => x.id === pid);
-    if (!p || !p.materials[mIdx]) return;
+  const handleOpenSpecModal = (pidOrData, mIdx) => {
+    if (typeof pidOrData === 'object' && pidOrData !== null && pidOrData.material) {
+      setSpecModalData(pidOrData);
+      return;
+    }
+    const p = projects.find(x => String(x.id) === String(pidOrData));
+    if (!p || !p.materials || !p.materials[mIdx]) return;
     setSpecModalData({ project: p, material: p.materials[mIdx], mIdx });
   };
 
   const handleSaveSpecs = async (pid, mIdx, specs) => {
     try {
-      await saveSpecs(pid, mIdx, specs);
-      showToast('📋 Specifications saved');
+      if (specModalData?.material?.libId) {
+        await updateSpecInLibrary(specModalData.material.libId, {
+          specData: specs,
+          specName: specs.docHeader?.docName || specModalData.material.name,
+          itemCode: specs.docHeader?.itemCode || specModalData.material.pmCode
+        });
+        showToast('📋 Master specification updated in Spec Library');
+      } else {
+        await saveSpecs(pid, mIdx, specs);
+        showToast('📋 Specifications saved');
+      }
       setSpecModalData(null);
       fetchProjects();
     } catch (e) {
@@ -224,6 +300,31 @@ export default function App() {
 
   const handleProjectUpdated = (updatedProject) => {
     setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  };
+
+  const handleOpenArtworkModal = (project, material, mIdx) => {
+    let p = project;
+    if (typeof project === 'string' || typeof project === 'number') {
+      p = projects.find(x => String(x.id) === String(project));
+    }
+    const mat = material || (p?.materials && mIdx !== null && mIdx !== undefined ? p.materials[mIdx] : null);
+    setArtworkViewerState({
+      isOpen: true,
+      project: p,
+      material: mat,
+      mIdx
+    });
+  };
+
+  const handleArtworkUpdated = (updatedProject) => {
+    handleProjectUpdated(updatedProject);
+    if (artworkViewerState.isOpen && artworkViewerState.mIdx !== null && updatedProject?.materials) {
+      setArtworkViewerState(prev => ({
+        ...prev,
+        project: updatedProject,
+        material: updatedProject.materials[prev.mIdx] || prev.material
+      }));
+    }
   };
 
   const exportCSV = () => {
@@ -246,7 +347,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={{ background: 'var(--bg-dark)', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--teal)', fontFamily: 'var(--font-family)' }}>
+      <div style={{ background: 'var(--bg-app)', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--teal)', fontFamily: 'var(--font-family)' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '42px', marginBottom: '16px' }}>📦</div>
           <div style={{ fontWeight: '800', letterSpacing: '1.5px', fontSize: '13px' }}>INITIALIZING SAAS DASHBOARD...</div>
@@ -260,18 +361,43 @@ export default function App() {
   }
 
   const unreadCount = logs.filter(e => e.timestamp > (seenAt || 0)).length;
+  const isAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
+  const isSuperAdmin = currentUser.role === 'superadmin';
 
   return (
     <div className="app-layout">
+      {/* MOBILE BACKDROP OVERLAY */}
+      <div
+        className={`sidebar-backdrop ${isMobileNavOpen ? 'active' : ''}`}
+        onClick={() => setIsMobileNavOpen(false)}
+        aria-hidden="true"
+      />
+
       {/* ENTERPRISE SIDEBAR */}
       <Sidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          setIsMobileNavOpen(false);
+        }}
+        isMobileNavOpen={isMobileNavOpen}
+        onCloseMobile={() => setIsMobileNavOpen(false)}
         currentUser={currentUser}
         onLogout={handleLogout}
         unreadCount={unreadCount}
         logs={logs}
-        onOpenNotif={() => setActiveTab('tracker')}
+        onOpenNotif={() => {
+          setActiveTab('tracker');
+          setIsMobileNavOpen(false);
+        }}
+        onOpenUserDirectory={() => {
+          setIsUserDirOpen(true);
+          setIsMobileNavOpen(false);
+        }}
+        onOpenProfile={() => {
+          setIsProfileModalOpen(true);
+          setIsMobileNavOpen(false);
+        }}
       />
 
       {/* MAIN SAAS CONTAINER */}
@@ -279,66 +405,95 @@ export default function App() {
         <Header
           activeTab={activeTab}
           currentUser={currentUser}
-          onOpenAddModal={() => { setEditProject(null); setIsAddModalOpen(true); }}
+          onOpenAddModal={() => openAddProjectPage(null)}
           logs={logs}
           seenAt={seenAt}
           onLogsMarkedSeen={(ts) => setSeenAt(ts)}
           exportCSV={exportCSV}
+          onToggleMobileNav={() => setIsMobileNavOpen(!isMobileNavOpen)}
         />
 
         <div className="page-container">
-          {activeTab === 'dashboard' && (
-            <Dashboard
-              projects={projects}
-              onFilterStage={handleFilterStage}
-              onSwitchToTracker={() => setActiveTab('tracker')}
-              onOpenAddModal={() => { setEditProject(null); setIsAddModalOpen(true); }}
-              canEdit={['admin', 'editor', 'superadmin'].includes(currentUser.role)}
-            />
-          )}
+          <ErrorBoundary key={activeTab}>
+            {activeTab === 'dashboard' && (
+              <Dashboard
+                projects={projects}
+                onFilterStage={handleFilterStage}
+                onSwitchToTracker={() => setActiveTab('tracker')}
+                onOpenAddModal={() => openAddProjectPage(null)}
+                canCreate={['admin', 'superadmin'].includes(currentUser.role)}
+                canEdit={['updater', 'editor', 'admin', 'superadmin'].includes(currentUser.role)}
+                onNavigate={setActiveTab}
+              />
+            )}
 
-          {activeTab === 'tracker' && (
-            <Tracker
-              projects={projects}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              stageFilter={stageFilter}
-              setStageFilter={setStageFilter}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              currentUser={currentUser}
-              onOpenAddModal={() => { setEditProject(null); setIsAddModalOpen(true); }}
-              onOpenEditModal={(p) => { setEditProject(p); setIsAddModalOpen(true); }}
-              onDeleteProject={handleDeleteProject}
-              onAdvanceProject={handleAdvanceProject}
-              onRevokeProject={handleRevokeProject}
-              onOpenLaunchModal={(pid) => setLaunchModalState({ isOpen: true, project: projects.find(x => x.id === pid) })}
-              onOpenBriefModal={(pid) => setBriefModalState({ isOpen: true, project: projects.find(x => x.id === pid) })}
-              onOpenDetailModal={(p) => setDetailModalState({ isOpen: true, project: p })}
-              onAdvanceMaterial={handleAdvanceMaterial}
-              onRevokeMaterial={handleRevokeMaterial}
-              onOpenSpecModal={handleOpenSpecModal}
-              onProjectUpdated={handleProjectUpdated}
-              showToast={showToast}
-            />
-          )}
+            {activeTab === 'tracker' && (
+              <Tracker
+                projects={projects}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                stageFilter={stageFilter}
+                setStageFilter={setStageFilter}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                currentUser={currentUser}
+                onOpenAddModal={() => openAddProjectPage(null)}
+                onOpenEditModal={(p) => openAddProjectPage(p)}
+                onDeleteProject={handleDeleteProject}
+                onAdvanceProject={handleAdvanceProject}
+                onRevokeProject={handleRevokeProject}
+                onOpenLaunchModal={(pid) => setLaunchModalState({ isOpen: true, project: projects.find(x => x.id === pid) })}
+                onOpenBriefModal={(pid) => setBriefModalState({ isOpen: true, project: projects.find(x => x.id === pid) })}
+                onOpenDetailModal={(p, tab = 'specs') => setDetailModalState({ isOpen: true, project: p, initialTab: tab })}
+                onAdvanceMaterial={handleAdvanceMaterial}
+                onRevokeMaterial={handleRevokeMaterial}
+                onOpenSpecModal={handleOpenSpecModal}
+                onOpenArtworkModal={handleOpenArtworkModal}
+                onProjectUpdated={handleProjectUpdated}
+                showToast={showToast}
+              />
+            )}
 
-          {activeTab === 'gantt' && <Gantt projects={projects} />}
-          {activeTab === 'stages' && <StageGuide />}
-          {activeTab === 'raci' && <RACI />}
-          {activeTab === 'risks' && <Risks />}
+            {activeTab === 'gantt' && <Gantt projects={projects} />}
+            {activeTab === 'specs' && (
+              <SpecsHub
+                projects={projects}
+                onOpenSpecModal={handleOpenSpecModal}
+                onOpenArtworkModal={handleOpenArtworkModal}
+                currentUser={currentUser}
+                showToast={showToast}
+                onRefreshProjects={fetchProjects}
+              />
+            )}
+            {activeTab === 'artworks' && (
+              <ArtworkHub
+                projects={projects}
+                onOpenArtworkModal={handleOpenArtworkModal}
+                onOpenSpecModal={handleOpenSpecModal}
+                currentUser={currentUser}
+                canEdit={['updater', 'editor', 'admin', 'superadmin'].includes(currentUser.role)}
+                onArtworkUpdated={handleArtworkUpdated}
+                onRefreshProjects={fetchProjects}
+                showToast={showToast}
+              />
+            )}
+            {activeTab === 'stages' && <StageGuide />}
+            {activeTab === 'raci' && <RACI />}
+            {activeTab === 'risks' && <Risks />}
+            {activeTab === 'add-project' && (
+              <AddProjectPage
+                editProject={editProject}
+                onSave={handleSaveProject}
+                onCancel={() => { setEditProject(null); setActiveTab(prevTab || 'dashboard'); }}
+              />
+            )}
+          </ErrorBoundary>
         </div>
       </div>
 
       <Toast toast={toast} />
 
       {/* MODALS */}
-      <AddProjectModal
-        isOpen={isAddModalOpen}
-        onClose={() => { setIsAddModalOpen(false); setEditProject(null); }}
-        onSave={handleSaveProject}
-        editProject={editProject}
-      />
 
       <LaunchModal
         isOpen={launchModalState.isOpen}
@@ -357,15 +512,51 @@ export default function App() {
       <DetailModal
         isOpen={detailModalState.isOpen}
         project={detailModalState.project}
-        onClose={() => setDetailModalState({ isOpen: false, project: null })}
+        initialTab={detailModalState.initialTab || 'specs'}
+        onClose={() => setDetailModalState({ isOpen: false, project: null, initialTab: 'specs' })}
+        onOpenSpecModal={handleOpenSpecModal}
+        onOpenArtworkModal={handleOpenArtworkModal}
       />
 
-      <SpecModal
-        specData={specModalData}
-        onClose={() => setSpecModalData(null)}
-        onSave={handleSaveSpecs}
-        canEdit={['admin', 'editor', 'superadmin'].includes(currentUser.role)}
+      {specModalData && (
+        <SpecModal
+          specData={specModalData}
+          onClose={() => setSpecModalData(null)}
+          onSave={handleSaveSpecs}
+          canEdit={!currentUser?.role || ['updater', 'editor', 'admin', 'superadmin'].includes(currentUser.role)}
+          currentUser={currentUser}
+          isAdmin={isAdmin}
+          isSuperAdmin={isSuperAdmin}
+          onRefresh={fetchProjects}
+          showToast={showToast}
+        />
+      )}
+
+      <ArtworkViewerModal
+        isOpen={artworkViewerState.isOpen}
+        project={artworkViewerState.project}
+        material={artworkViewerState.material}
+        mIdx={artworkViewerState.mIdx}
+        onClose={() => setArtworkViewerState({ isOpen: false, project: null, material: null, mIdx: null })}
+        onOpenSpecModal={handleOpenSpecModal}
+        onArtworkUpdated={handleArtworkUpdated}
+        showToast={showToast}
       />
+
+      <UserDirectoryModal
+        isOpen={isUserDirOpen}
+        onClose={() => setIsUserDirOpen(false)}
+        currentUser={currentUser}
+        onUserUpdated={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+      />
+
+      {isProfileModalOpen && (
+        <ProfileModal
+          user={currentUser}
+          onClose={() => setIsProfileModalOpen(false)}
+          onUserUpdated={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+        />
+      )}
     </div>
   );
 }

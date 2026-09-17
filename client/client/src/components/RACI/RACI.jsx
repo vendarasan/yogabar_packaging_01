@@ -16,13 +16,13 @@ export default function RACI() {
             <strong style={{ color: 'var(--white-dim)' }}>I</strong> = Informed
           </div>
         </div>
-        <div style={{ overflowX: 'auto', padding: '12px' }}>
-          <table className="raci-table">
+        <div className="modern-mat-table-wrap" style={{ margin: '16px' }}>
+          <table className="modern-mat-table">
             <thead>
               <tr>
                 <th className="left">Stage / Function</th>
                 {FUNCTIONS.map(f => (
-                  <th key={f}>{f}</th>
+                  <th key={f} style={{ textAlign: 'center' }}>{f}</th>
                 ))}
               </tr>
             </thead>
@@ -32,7 +32,7 @@ export default function RACI() {
                   <td className="stage-col" style={{ fontWeight: '700', color: 'var(--teal)' }}>{st}</td>
                   {RACI_DATA[st].map((v, idx) => {
                     const cls = v === 'A' ? 'raci-a' : v === 'R' ? 'raci-r' : v === 'C' ? 'raci-c' : 'raci-i';
-                    return <td key={idx} className={cls}>{v}</td>;
+                    return <td key={idx} className={cls} style={{ textAlign: 'center' }}>{v}</td>;
                   })}
                 </tr>
               ))}

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { login, signup, forgotPassword, changePassword } from '../../api';
+import { PRESET_USERS } from '../../constants';
 
 export default function AuthScreen({ onLoginSuccess, showToast }) {
   const [view, setView] = useState('v-login');
   const [showPass, setShowPass] = useState({ l: false, s1: false, s2: false, cp1: false, cp2: false });
+  const [demoFilter, setDemoFilter] = useState('all');
 
   // Form states
   const [lEmail, setLEmail] = useState('');
@@ -83,13 +85,14 @@ export default function AuthScreen({ onLoginSuccess, showToast }) {
 
   return (
     <div className="auth-screen">
-      <div className="auth-card">
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+      <div className="auth-card landscape">
+        <div className="auth-card-left">
           <div className="auth-logo-icon">📦</div>
-          <div className="auth-title">PKG DEVELOPMENT TRACKER</div>
+          <div className="auth-title">PACKAGING DEVELOPMENT TRACKER</div>
           <div className="auth-sub">FMCG Packaging Team</div>
         </div>
-
+        <div className="auth-card-right">
+          <div className="auth-form-container">
         {/* LOGIN VIEW */}
         {view === 'v-login' && (
           <div className="auth-view active">
@@ -128,12 +131,77 @@ export default function AuthScreen({ onLoginSuccess, showToast }) {
             <button className="btn btn-primary" onClick={handleLogin} style={{ width: '100%', justifyContent: 'center', padding: '10px', fontSize: '13px', marginTop: '8px' }}>
               Sign In →
             </button>
-            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+            <div style={{ textAlign: 'center', marginTop: '10px', marginBottom: '4px' }}>
               <span className="auth-link" onClick={() => setView('v-forgot')}>Forgot password?</span>
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--white-dim)', textAlign: 'center', marginTop: '14px', lineHeight: '1.6', opacity: '0.7' }}>
-              Default password for seeded accounts: <span style={{ fontFamily: 'var(--mono)', color: 'var(--teal)' }}>Admin@2024</span><br />
-              Super Admin: username <span style={{ fontFamily: 'var(--mono)', color: 'var(--red)' }}>admin</span> / password <span style={{ fontFamily: 'var(--mono)', color: 'var(--teal)' }}>Admin@PKG#2024</span>
+            <div style={{ marginTop: '6px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc', overflow: 'hidden' }}>
+              <div style={{ padding: '9px 12px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '13px' }}>🔐</span>
+                  <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', letterSpacing: '0.8px', textTransform: 'uppercase' }}>Demo Credentials (11 Roles · Exact Team Structure)</span>
+                </div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['all', 'superadmin', 'admin', 'updater'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setDemoFilter(cat)}
+                      style={{
+                        fontSize: '8.5px',
+                        fontWeight: '700',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: demoFilter === cat ? '#0f172a' : 'rgba(0,0,0,0.06)',
+                        color: demoFilter === cat ? '#fff' : '#64748b'
+                      }}
+                    >
+                      {cat === 'all' ? `All (${PRESET_USERS.length})` : cat === 'superadmin' ? 'Super (1)' : cat === 'admin' ? 'Admins (2)' : `Updaters (${PRESET_USERS.filter(u => u.role === 'updater').length})`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ maxHeight: '185px', overflowY: 'auto' }}>
+                {PRESET_USERS.filter(u => demoFilter === 'all' || u.role === demoFilter).map(acc => (
+                  <button
+                    key={acc.username}
+                    type="button"
+                    onClick={() => { setLEmail(acc.username); setLPass(acc.password); }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: '1px solid #f1f5f9',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.12s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    title={acc.authority}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: '#0f172a' }}>{acc.label}</span>
+                        <span style={{ fontSize: '8.5px', fontWeight: '800', padding: '1px 5px', borderRadius: '3px', background: acc.badgeBg, color: acc.badgeColor, border: `1px solid ${acc.badgeColor}35` }}>
+                          {acc.badge}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', fontSize: '9.5px', color: '#64748b', flexWrap: 'wrap' }}>
+                        <span>🏢 {acc.department}</span>
+                        <span style={{ fontFamily: 'monospace', color: '#0284c7' }}>PW: {acc.password}</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#0284c7', fontWeight: '700', flexShrink: 0 }}>↗ Fill</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -227,6 +295,8 @@ export default function AuthScreen({ onLoginSuccess, showToast }) {
           </div>
         )}
 
+          </div>
+        </div>
       </div>
     </div>
   );

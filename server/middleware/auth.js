@@ -1,29 +1,86 @@
 const store = require('../store');
+const { SUPERADMIN } = require('../constants');
+const { SessionsRepo, UsersRepo } = require('../db/repository');
 
-function authMiddleware(req, res, next) {
-  const token = req.cookies && req.cookies.pkg_session;
+async function authMiddleware(req, res, next) {
+  let token = req.cookies && req.cookies.pkg_session;
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.slice(7).trim();
+  }
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
   // Super-admin bypass
   if (token === '__superadmin__') {
-    req.user = { email: 'admin', name: 'Super Admin', role: 'superadmin', color: '#ff5252' };
+    req.user = {
+      email: SUPERADMIN.email || 'alexsander@company.com',
+      name: SUPERADMIN.name || 'Alexsander',
+      role: 'superadmin',
+      title: SUPERADMIN.title || 'Packaging Lead',
+      team: SUPERADMIN.team || 'Packaging Leadership',
+      department: SUPERADMIN.department || 'Global Packaging Leadership',
+      mobile: SUPERADMIN.mobile || '+91 98765 43210',
+      avatar: SUPERADMIN.avatar || '',
+      color: SUPERADMIN.color || '#ef4444'
+    };
     return next();
   }
 
-  const email = store.sessions[token];
-  if (!email || !store.users[email]) {
-    return res.status(401).json({ error: 'Session expired. Please log in again.' });
-  }
+  try {
+    // 1. Check PostgreSQL sessions table
+    let email = null;
+    try {
+      email = await SessionsRepo.get(token);
+    } catch (dbErr) {
+      // Fallback to in-memory if DB is temporarily disconnected
+      email = null;
+    }
 
-  const user = store.users[email];
-  req.user = { email, name: user.name, role: user.role, color: user.color };
-  next();
+    if (!email) {
+      email = store.sessions[token];
+    }
+
+    if (!email) {
+      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    }
+
+    // 2. Check PostgreSQL users table
+    let user = null;
+    try {
+      user = await UsersRepo.getByEmail(email);
+    } catch (dbErr) {
+      user = null;
+    }
+
+    if (!user) {
+      user = store.users[email];
+    }
+
+    if (!user) {
+      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    }
+
+    req.user = {
+      email: user.email || email,
+      name: user.name,
+      role: user.role,
+      title: user.title || '',
+      team: user.team || '',
+      department: user.department || '',
+      mobile: user.mobile || '',
+      avatar: user.avatar || '',
+      color: user.color
+    };
+    next();
+  } catch (err) {
+    console.error('Auth verification error:', err);
+    return res.status(500).json({ error: 'Authentication verification error' });
+  }
 }
 
-function requireEditor(req, res, next) {
+function requireSuperAdmin(req, res, next) {
   const role = req.user && req.user.role;
-  if (!['admin', 'editor', 'superadmin'].includes(role)) {
-    return res.status(403).json({ error: 'Editor or Admin role required' });
+  if (role !== 'superadmin') {
+    return res.status(403).json({ error: 'Access Denied: Super Admin role required.' });
   }
   next();
 }
@@ -31,9 +88,19 @@ function requireEditor(req, res, next) {
 function requireAdmin(req, res, next) {
   const role = req.user && req.user.role;
   if (!['admin', 'superadmin'].includes(role)) {
-    return res.status(403).json({ error: 'Admin role required' });
+    return res.status(403).json({ error: 'Access Denied: Admin or Super Admin role required.' });
   }
   next();
 }
 
-module.exports = { authMiddleware, requireEditor, requireAdmin };
+function requireUpdater(req, res, next) {
+  const role = req.user && req.user.role;
+  if (!['updater', 'editor', 'admin', 'superadmin'].includes(role)) {
+    return res.status(403).json({ error: 'Access Denied: Updater, Admin or Super Admin role required.' });
+  }
+  next();
+}
+
+const requireEditor = requireUpdater;
+
+module.exports = { authMiddleware, requireSuperAdmin, requireAdmin, requireUpdater, requireEditor };
