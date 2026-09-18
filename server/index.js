@@ -112,19 +112,27 @@ async function bootstrap() {
     console.log('======================================================\n');
   }
 
-  app.listen(PORT, () => {
-    console.log(`\n🚀 PKG Tracker API running on http://localhost:${PORT}`);
-    console.log(`   Client expected at: ${CLIENT_URL}`);
-    console.log(`   Super Admin login: username=admin  password=Admin@PKG#2024`);
-    if (isDbConnected) {
-      console.log(`   ✅ Persistent storage: AWS RDS PostgreSQL (ap-south-1)\n`);
-    } else {
-      console.log(`   ⚠  Temporary in-memory store active until RDS password is set\n`);
-    }
+  if (require.main === module) {
+    app.listen(PORT, () => {
+      console.log(`\n🚀 PKG Tracker API running on http://localhost:${PORT}`);
+      console.log(`   Client expected at: ${CLIENT_URL}`);
+      console.log(`   Super Admin login: username=admin  password=Admin@PKG#2024`);
+      if (isDbConnected) {
+        console.log(`   ✅ Persistent storage: AWS RDS PostgreSQL (ap-south-1)\n`);
+      } else {
+        console.log(`   ⚠  Temporary in-memory store active until RDS password is set\n`);
+      }
+    });
+  }
+  return app;
+}
+
+if (require.main === module) {
+  bootstrap().catch(err => {
+    console.error('Fatal startup error:', err);
   });
 }
 
-bootstrap().catch(err => {
-  console.error('Fatal startup error:', err);
-});
+module.exports = { app, bootstrap };
+
 

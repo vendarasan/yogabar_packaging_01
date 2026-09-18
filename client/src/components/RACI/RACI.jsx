@@ -1,4 +1,5 @@
 import React from 'react';
+import { Users } from 'lucide-react';
 import { FUNCTIONS, RACI_DATA } from '../../constants';
 
 export default function RACI() {
@@ -8,7 +9,9 @@ export default function RACI() {
     <div id="raci" className="panel active">
       <div className="table-wrapper">
         <div className="table-header">
-          <div className="table-title">👥 RACI Matrix — Responsibility Assignment</div>
+          <div className="table-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Users size={16} color="var(--teal)" /> RACI Matrix — Responsibility Assignment
+          </div>
           <div style={{ fontSize: '11px', color: 'var(--white-dim)' }}>
             <strong style={{ color: 'var(--amber)' }}>A</strong> = Accountable ·{' '}
             <strong style={{ color: 'var(--red)' }}>R</strong> = Responsible ·{' '}

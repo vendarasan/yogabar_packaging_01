@@ -1,0 +1,17 @@
+project name
+SKU size
+Launch Timeline
+Project Type(Regular/ growth) if (regular){
+    NPD /EPD 
+}
+else if(Growth){
+NPD/EPD
+}
+Description - textarea field
+
+Packaging Format  - dynamic with stage (add button can add more rows)
+Stage 2 - if it is added then configuration for the quantity, length,, width,height and matrix columns
+stage 3 - if it is added then configuration for the quantity, length,width,height and matrix columns
+
+
+all stages should have a specifications which in the existing project form

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { Plus, Eye, Download, RefreshCw, Trash2, Palette, Package, FileText, CheckCircle2, Clock, AlertTriangle, Search, Filter } from 'lucide-react';
 import { fmt, getArtworkCode, hasArtwork, getArtworkFiles, STAGE_COLORS } from '../../utils';
 import { getSpecStatus, StatusBadge } from '../Specs/SpecsHub';
 import { updateMaterialArtwork } from '../../api';
@@ -409,25 +410,12 @@ export default function ArtworkHub({
           {/* [C] Create: Prominent "+ Upload Artwork" button */}
           {canEdit && (
             <button
+              className="btn btn-primary btn-sm"
               onClick={openUploadModal}
-              style={{
-                background: 'linear-gradient(135deg, #ec4899, #be185d)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '6px 14px',
-                fontSize: '11.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                boxShadow: '0 2px 10px rgba(236, 72, 153, 0.35)',
-                whiteSpace: 'nowrap'
-              }}
               title="Upload new artwork for any packaging component"
             >
-              + Upload Artwork
+              <Plus size={14} />
+              <span>Upload Artwork</span>
             </button>
           )}
 
@@ -758,14 +746,14 @@ export default function ArtworkHub({
                             left: '8px',
                             background: 'rgba(6, 42, 48, 0.92)',
                             backdropFilter: 'blur(6px)',
-                            border: '1px solid rgba(236, 72, 153, 0.5)',
+                            border: '1px solid var(--border-color)',
                             padding: '3px 8px',
-                            borderRadius: '5px',
+                            borderRadius: 'var(--radius-sm)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px'
                           }}>
-                            <span style={{ fontSize: '9px', fontWeight: 800, color: '#f472b6', fontFamily: 'var(--font-mono)' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--teal)', fontFamily: 'var(--font-mono)' }}>
                               {awCode}
                             </span>
                           </div>
@@ -775,57 +763,63 @@ export default function ArtworkHub({
                             position: 'absolute',
                             top: '8px',
                             right: '8px',
-                            background: `${stageColor}25`,
+                            background: `${stageColor}18`,
                             color: stageColor,
-                            border: `1px solid ${stageColor}60`,
+                            border: `1px solid ${stageColor}40`,
                             padding: '2px 8px',
-                            borderRadius: '12px',
+                            borderRadius: 'var(--radius-badge)',
                             fontSize: '9.5px',
-                            fontWeight: 800
+                            fontWeight: 600
                           }}>
-                            {stage === 'VPDF' ? '⭐ VPDF Stage' : stage}
+                            {stage === 'VPDF' ? 'VPDF Stage' : stage}
                           </span>
                         </div>
 
                         {/* Card Info Body */}
                         <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.3 }}>
                               {material.name}
                             </div>
                             <StatusBadge statusKey={specStatusKey} />
                           </div>
 
-                          <div style={{ fontSize: '10.5px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span>{material.type}</span>
                             {material.printType && material.printType !== 'Not Applicable' && (
-                              <span>· 🖨 {material.printType}</span>
+                              <span>· Print: {material.printType}</span>
                             )}
                             {material.supplier && (
-                              <span>· 🏭 {material.supplier}</span>
+                              <span>· Supplier: {material.supplier}</span>
                             )}
                           </div>
 
-                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                            📦 <strong>{project.projectName}</strong>
-                            {project.skuSize && <span> · {project.skuSize}</span>}
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Package size={12} style={{ color: 'var(--teal)', flexShrink: 0 }} />
+                            <span><strong>{project.projectName}</strong></span>
+                            {project.skuSize && <span>· {project.skuSize}</span>}
                           </div>
 
                           {/* Artwork file metadata if uploaded */}
                           {isUploaded && previewFile && (
                             <div style={{
-                              fontSize: '9px',
-                              color: 'var(--text-muted)',
+                              fontSize: '9.5px',
+                              color: 'var(--text-secondary)',
                               fontFamily: 'var(--font-mono)',
-                              background: 'rgba(0,0,0,0.2)',
+                              background: 'var(--card-bg-subtle)',
+                              border: '1px solid var(--border-color)',
                               padding: '4px 8px',
-                              borderRadius: '4px',
+                              borderRadius: 'var(--radius-sm)',
                               marginTop: '4px',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
+                              whiteSpace: 'nowrap',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
                             }}>
-                              📄 {previewFile.name} {previewFile.size ? `(${Math.round(previewFile.size / 1024)} KB)` : ''}
+                              <FileText size={10} style={{ color: 'var(--teal)', flexShrink: 0 }} />
+                              <span>{previewFile.name} {previewFile.size ? `(${Math.round(previewFile.size / 1024)} KB)` : ''}</span>
                             </div>
                           )}
                         </div>
@@ -852,36 +846,42 @@ export default function ArtworkHub({
                                 <button
                                   onClick={() => onOpenSpecModal(project.id, mIdx)}
                                   style={{
-                                    background: 'rgba(0, 243, 255, 0.1)',
-                                    border: '1px solid rgba(0, 243, 255, 0.3)',
+                                    background: 'rgba(0, 200, 215, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
                                     color: 'var(--teal)',
-                                    borderRadius: '5px',
+                                    borderRadius: 'var(--radius-sm)',
                                     padding: '4px 8px',
-                                    fontSize: '10px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer'
+                                    fontSize: '10.5px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
                                   }}
                                   title="View / Edit Technical Specification"
                                 >
-                                  📋 Spec ({pmCode})
+                                  <FileText size={11} /> Spec ({pmCode})
                                 </button>
 
                                 {isUploaded && (
                                   <button
                                     onClick={() => handleRowDownload(previewFile, awCode)}
                                     style={{
-                                      background: 'rgba(16, 185, 129, 0.15)',
-                                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                                      color: '#34d399',
-                                      borderRadius: '5px',
-                                      padding: '4px 7px',
-                                      fontSize: '10px',
-                                      fontWeight: 700,
-                                      cursor: 'pointer'
+                                      background: 'rgba(56, 201, 138, 0.1)',
+                                      border: '1px solid rgba(56, 201, 138, 0.25)',
+                                      color: 'var(--success)',
+                                      borderRadius: 'var(--radius-sm)',
+                                      padding: '4px 8px',
+                                      fontSize: '10.5px',
+                                      fontWeight: 500,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
                                     }}
                                     title="Direct Download Active Artwork File"
                                   >
-                                    ⬇ Download
+                                    <Download size={11} /> Download
                                   </button>
                                 )}
                               </div>
@@ -892,22 +892,21 @@ export default function ArtworkHub({
                                     <button
                                       onClick={() => onOpenArtworkModal(project, material, mIdx)}
                                       style={{
-                                        background: 'linear-gradient(135deg, #ec4899, #be185d)',
-                                        color: '#ffffff',
-                                        border: 'none',
-                                        borderRadius: '5px',
-                                        padding: '5px 10px',
+                                        background: 'rgba(0, 200, 215, 0.12)',
+                                        color: 'var(--teal)',
+                                        border: '1px solid var(--teal)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        padding: '4px 10px',
                                         fontSize: '10.5px',
-                                        fontWeight: 800,
+                                        fontWeight: 600,
                                         cursor: 'pointer',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '3px',
-                                        boxShadow: '0 2px 8px rgba(236, 72, 153, 0.4)'
+                                        gap: '4px'
                                       }}
                                       title="Read / View in Artwork Viewer"
                                     >
-                                      👁 View
+                                      <Eye size={12} /> View
                                     </button>
 
                                     {canEdit && (
@@ -915,34 +914,39 @@ export default function ArtworkHub({
                                         <button
                                           onClick={() => handleRowReplace(project, material, mIdx)}
                                           style={{
-                                            background: 'rgba(59, 130, 246, 0.18)',
-                                            border: '1px solid rgba(59, 130, 246, 0.4)',
-                                            color: '#60a5fa',
-                                            borderRadius: '5px',
-                                            padding: '5px 8px',
-                                            fontSize: '10px',
-                                            fontWeight: 700,
-                                            cursor: 'pointer'
+                                            background: 'var(--card-bg-subtle)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--text-secondary)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '4px 8px',
+                                            fontSize: '10.5px',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
                                           }}
                                           title="Update / Replace Artwork File"
                                         >
-                                          🔄 Replace
+                                          <RefreshCw size={11} /> Replace
                                         </button>
                                         <button
                                           onClick={() => handleRowDelete(project, material, mIdx)}
                                           style={{
-                                            background: 'rgba(239, 68, 68, 0.15)',
-                                            border: '1px solid rgba(239, 68, 68, 0.4)',
-                                            color: '#f87171',
-                                            borderRadius: '5px',
-                                            padding: '5px 8px',
-                                            fontSize: '10px',
-                                            fontWeight: 700,
-                                            cursor: 'pointer'
+                                            background: 'rgba(240, 93, 108, 0.1)',
+                                            border: '1px solid rgba(240, 93, 108, 0.25)',
+                                            color: 'var(--danger)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            padding: '4px 8px',
+                                            fontSize: '10.5px',
+                                            fontWeight: 500,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center'
                                           }}
                                           title="Delete Artwork"
                                         >
-                                          🗑
+                                          <Trash2 size={11} />
                                         </button>
                                       </>
                                     )}
@@ -951,23 +955,19 @@ export default function ArtworkHub({
                                   canEdit ? (
                                     <button
                                       onClick={() => handleRowUpload(project, material, mIdx)}
+                                      className="btn btn-primary"
                                       style={{
-                                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                                        color: '#ffffff',
-                                        border: 'none',
-                                        borderRadius: '5px',
-                                        padding: '5px 12px',
+                                        padding: '4px 10px',
                                         fontSize: '10.5px',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        borderRadius: 'var(--radius-sm)',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '4px',
-                                        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
+                                        gap: '4px'
                                       }}
                                       title="Create / Upload Artwork File"
                                     >
-                                      + Upload AW
+                                      <Plus size={12} /> Upload AW
                                     </button>
                                   ) : (
                                     <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Pending</span>
@@ -1132,20 +1132,20 @@ export default function ArtworkHub({
                                         onClick={() => onOpenArtworkModal(project, material, mIdx)}
                                         title="Read / View Artwork in Viewer Modal"
                                         style={{
-                                          background: 'rgba(236, 72, 153, 0.18)',
-                                          color: '#f472b6',
-                                          border: '1px solid #ec4899',
-                                          borderRadius: '4px',
+                                          background: 'rgba(0, 200, 215, 0.12)',
+                                          color: 'var(--teal)',
+                                          border: '1px solid var(--teal)',
+                                          borderRadius: 'var(--radius-sm)',
                                           padding: '3px 7px',
                                           fontSize: '10px',
-                                          fontWeight: 700,
+                                          fontWeight: 600,
                                           cursor: 'pointer',
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           gap: '3px'
                                         }}
                                       >
-                                        👁 View
+                                        <Eye size={11} /> View
                                       </button>
 
                                       {/* [R] Read: Direct Download */}
@@ -1153,20 +1153,20 @@ export default function ArtworkHub({
                                         onClick={() => handleRowDownload(preview, awCode)}
                                         title="Read / Download Artwork File directly"
                                         style={{
-                                          background: 'rgba(16, 185, 129, 0.18)',
-                                          color: '#34d399',
-                                          border: '1px solid rgba(16, 185, 129, 0.4)',
-                                          borderRadius: '4px',
+                                          background: 'rgba(56, 201, 138, 0.1)',
+                                          color: 'var(--success)',
+                                          border: '1px solid rgba(56, 201, 138, 0.25)',
+                                          borderRadius: 'var(--radius-sm)',
                                           padding: '3px 7px',
                                           fontSize: '10px',
-                                          fontWeight: 700,
+                                          fontWeight: 500,
                                           cursor: 'pointer',
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           gap: '3px'
                                         }}
                                       >
-                                        ⬇ Download
+                                        <Download size={11} /> Download
                                       </button>
 
                                       {/* [U] Update: Replace File */}
@@ -1175,20 +1175,20 @@ export default function ArtworkHub({
                                           onClick={() => handleRowReplace(project, material, mIdx)}
                                           title="Update / Replace Artwork with new file version"
                                           style={{
-                                            background: 'rgba(59, 130, 246, 0.18)',
-                                            color: '#60a5fa',
-                                            border: '1px solid rgba(59, 130, 246, 0.4)',
-                                            borderRadius: '4px',
+                                            background: 'var(--card-bg-subtle)',
+                                            color: 'var(--text-secondary)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: 'var(--radius-sm)',
                                             padding: '3px 7px',
                                             fontSize: '10px',
-                                            fontWeight: 700,
+                                            fontWeight: 500,
                                             cursor: 'pointer',
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '3px'
                                           }}
                                         >
-                                          🔄 Replace
+                                          <RefreshCw size={11} /> Replace
                                         </button>
                                       )}
 
@@ -1198,20 +1198,20 @@ export default function ArtworkHub({
                                           onClick={() => handleRowDelete(project, material, mIdx)}
                                           title="Delete Artwork from material"
                                           style={{
-                                            background: 'rgba(239, 68, 68, 0.15)',
-                                            color: '#f87171',
-                                            border: '1px solid rgba(239, 68, 68, 0.4)',
-                                            borderRadius: '4px',
+                                            background: 'rgba(240, 93, 108, 0.1)',
+                                            color: 'var(--danger)',
+                                            border: '1px solid rgba(240, 93, 108, 0.25)',
+                                            borderRadius: 'var(--radius-sm)',
                                             padding: '3px 7px',
                                             fontSize: '10px',
-                                            fontWeight: 700,
+                                            fontWeight: 500,
                                             cursor: 'pointer',
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '3px'
                                           }}
                                         >
-                                          🗑 Delete
+                                          <Trash2 size={11} /> Delete
                                         </button>
                                       )}
                                     </>
@@ -1222,22 +1222,18 @@ export default function ArtworkHub({
                                         <button
                                           onClick={() => handleRowUpload(project, material, mIdx)}
                                           title="Create / Upload Artwork File for this component"
+                                          className="btn btn-primary"
                                           style={{
-                                            background: 'linear-gradient(135deg, #10b981, #059669)',
-                                            color: '#ffffff',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '4px 9px',
+                                            padding: '3px 8px',
                                             fontSize: '10px',
-                                            fontWeight: 800,
-                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            borderRadius: 'var(--radius-sm)',
                                             display: 'inline-flex',
                                             alignItems: 'center',
-                                            gap: '3px',
-                                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+                                            gap: '3px'
                                           }}
                                         >
-                                          + Upload Artwork
+                                          <Plus size={11} /> Upload Artwork
                                         </button>
                                       ) : (
                                         <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Pending</span>
@@ -1250,14 +1246,17 @@ export default function ArtworkHub({
                                     onClick={() => onOpenSpecModal(project.id, mIdx)}
                                     title="View / Edit Technical Specification"
                                     style={{
-                                      background: 'rgba(0, 243, 255, 0.1)',
+                                      background: 'rgba(0, 200, 215, 0.08)',
                                       color: 'var(--teal)',
-                                      border: '1px solid rgba(0, 243, 255, 0.3)',
-                                      borderRadius: '4px',
+                                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                                      borderRadius: 'var(--radius-sm)',
                                       padding: '3px 7px',
                                       fontSize: '10px',
-                                      fontWeight: 700,
-                                      cursor: 'pointer'
+                                      fontWeight: 500,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
                                     }}
                                   >
                                     📋 Spec
@@ -1537,24 +1536,21 @@ export default function ArtworkHub({
                 <button
                   type="submit"
                   disabled={isSubmittingUpload || !uploadFiles.length}
+                  className="btn btn-primary"
                   style={{
-                    background: !uploadFiles.length || isSubmittingUpload
-                      ? 'rgba(236, 72, 153, 0.4)'
-                      : 'linear-gradient(135deg, #ec4899, #be185d)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '7px 18px',
+                    padding: '8px 18px',
                     fontSize: '12px',
-                    fontWeight: 800,
+                    fontWeight: 600,
+                    borderRadius: 'var(--radius-sm)',
+                    opacity: !uploadFiles.length || isSubmittingUpload ? 0.6 : 1,
                     cursor: !uploadFiles.length || isSubmittingUpload ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 2px 10px rgba(236, 72, 153, 0.4)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px'
                   }}
                 >
-                  {isSubmittingUpload ? '⏳ Uploading...' : '🎨 Upload & Save Artwork'}
+                  <Palette size={14} />
+                  {isSubmittingUpload ? 'Uploading...' : 'Upload & Save Artwork'}
                 </button>
               </div>
             </form>

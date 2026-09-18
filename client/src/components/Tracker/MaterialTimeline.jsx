@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Package, Truck, Palette, FileText, Check, X, Edit2, Play, RotateCcw, Building, Copy, MoreVertical, ArrowRight, ChevronRight } from 'lucide-react';
 import { STAGE_COLORS, fmt, daysFromNow, printCls, getArtworkCode, hasArtwork } from '../../utils';
 import {
   getSpecFields, isPouch, getMaterialLeadTime, POUCH_PRINT_LEAD,
@@ -13,32 +14,52 @@ import { getPMPrefix, extractPMNumber } from '../../specTemplates';
 import SpecSignoffModal from './SpecSignoffModal';
 import AdminSpecApprovalModal from './AdminSpecApprovalModal';
 
+// ─── Short Tier Label Helper (Pass 2) ──────────────────────────────────────────
+const getShortTierLabel = (matType, idx) => {
+  const tier = getMaterialHierarchyTier(matType);
+  if (tier <= 3) return 'PRIMARY';
+  if (tier === 4) return 'SECONDARY';
+  if (tier >= 5) return 'TERTIARY';
+  if (idx === 0) return 'PRIMARY';
+  if (idx === 1) return 'SECONDARY';
+  return 'TERTIARY';
+};
+
 // ─── Shared style constants ────────────────────────────────────────────────────
 
-const MONO_DATE_TD = { fontFamily: 'var(--mono)', fontSize: '10px', textAlign: 'center' };
+const MONO_DATE_TD = { fontFamily: 'var(--font-mono)', fontSize: '10px', textAlign: 'center' };
 const EMPTY_DASH   = { opacity: 0.35, fontSize: '10px' };
 
 const artworkBtnStyle = (hasAw) => ({
-  background: hasAw ? 'rgba(236,72,153,0.2)' : 'rgba(245,158,11,0.2)',
-  color:      hasAw ? '#f472b6' : '#fbbf24',
-  border:     `1px solid ${hasAw ? '#ec4899' : '#f59e0b'}`,
-  borderRadius: '3px',
-  padding: '1px 5px',
-  fontSize: '8.5px',
-  fontWeight: '800',
+  background: hasAw ? 'rgba(0, 200, 215, 0.12)' : 'rgba(242, 184, 75, 0.12)',
+  color:      hasAw ? 'var(--teal)' : 'var(--warning)',
+  border:     `1px solid ${hasAw ? 'rgba(0, 200, 215, 0.3)' : 'rgba(242, 184, 75, 0.3)'}`,
+  borderRadius: 'var(--r-badge)',
+  padding: '2px 6px',
+  fontSize: '9.5px',
+  fontWeight: '600',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 });
 
 const specStatusStyle = (status) => {
   const map = {
-    APPROVED:                 { bg: 'rgba(16,185,129,0.15)',  color: '#34d399',  border: 'rgba(16,185,129,0.4)'  },
-    CHECKED_PENDING_APPROVAL: { bg: 'rgba(6,182,212,0.15)',   color: '#22d3ee',  border: 'rgba(6,182,212,0.4)'   },
-    PENDING_CHECK:            { bg: 'rgba(245,158,11,0.15)',  color: '#fbbf24',  border: 'rgba(245,158,11,0.4)'  },
-    REVISION_REQUESTED:       { bg: 'rgba(244,63,94,0.15)',   color: '#fb7185',  border: 'rgba(244,63,94,0.4)'   },
+    APPROVED:                 { bg: 'rgba(56, 201, 138, 0.12)', color: 'var(--success)', border: 'rgba(56, 201, 138, 0.25)' },
+    CHECKED_PENDING_APPROVAL: { bg: 'rgba(0, 200, 215, 0.12)',  color: 'var(--teal)',    border: 'rgba(0, 200, 215, 0.25)' },
+    PENDING_CHECK:            { bg: 'rgba(242, 184, 75, 0.12)', color: 'var(--warning)', border: 'rgba(242, 184, 75, 0.25)' },
+    REVISION_REQUESTED:       { bg: 'rgba(240, 93, 108, 0.12)', color: 'var(--danger)',  border: 'rgba(240, 93, 108, 0.25)' },
   };
-  const t = map[status] || { bg: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: 'rgba(255,255,255,0.15)' };
-  return { fontSize: '10.5px', fontWeight: '700', padding: '2px 8px', borderRadius: '4px', background: t.bg, color: t.color, border: `1px solid ${t.border}` };
+  const t = map[status] || { bg: 'rgba(96, 124, 128, 0.12)', color: 'var(--text-muted)', border: 'rgba(96, 124, 128, 0.25)' };
+  return {
+    background: t.bg,
+    color: t.color,
+    border: `1px solid ${t.border}`,
+    borderRadius: 'var(--r-badge)',
+    padding: '2px 8px',
+    fontSize: '10.5px',
+    fontWeight: '600',
+    whiteSpace: 'nowrap'
+  };
 };
 
 const specStatusLabel = (status) => ({
@@ -99,7 +120,7 @@ function CrunchGateAlert({ crunchPlan, onOpenCrunchModal }) {
   );
 }
 
-function POCell({ m, idx, project, isLaunched, canEdit, isAdmin, onProjectUpdated, showToast, handleSavePOStatus, handleOpenSpecSignoff }) {
+function POCell({ m, idx, project, isLaunched, canEdit, isAdmin, onProjectUpdated, showToast, handleSavePOStatus, handleOpenSpecSignoff, onOpenSpecModal }) {
   const [editingPO, setEditingPO] = useState(false);
   const [poVal, setPoVal] = useState('');
 
@@ -128,9 +149,9 @@ function POCell({ m, idx, project, isLaunched, canEdit, isAdmin, onProjectUpdate
       background: isVPDFBlocked ? 'rgba(239,68,68,0.08)' : 'rgba(2,132,199,0.04)',
       borderLeft:  isVPDFBlocked ? '2px solid #ef4444' : '1px solid rgba(2,132,199,0.15)',
       borderRight: isVPDFBlocked ? '2px solid #ef4444' : '1px solid rgba(2,132,199,0.15)',
-      padding: '6px 8px',
+      padding: '8px 10px',
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+      <div className="po-cell-vert" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '100%' }}>
 
         {/* Alert banner when at VPDF and PO not raised */}
         {isVPDFBlocked && (
@@ -139,45 +160,51 @@ function POCell({ m, idx, project, isLaunched, canEdit, isAdmin, onProjectUpdate
           </div>
         )}
 
-        {/* PO Status Badge */}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 7px', borderRadius: '4px', fontSize: '9.5px', fontWeight: '700', background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, whiteSpace: 'nowrap' }}>
+        {/* 1. PO Status Badge */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: '700', background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, whiteSpace: 'nowrap', width: '100%', maxWidth: '124px', boxSizing: 'border-box' }}>
           {cfg.icon} {curStatus}
         </span>
 
-        {/* Spec sign-off status tag */}
-        <div style={{ fontSize: '7.5px', fontWeight: 600, color: m.specSignoff?.signed ? '#34d399' : '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+        {/* 2. Spec sign-off status tag */}
+        <div style={{ fontSize: '8px', fontWeight: 600, color: m.specSignoff?.signed ? '#34d399' : '#f59e0b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '2px', textAlign: 'center', lineHeight: '1.2', margin: '1px 0' }}>
           {m.specSignoff?.signed
-            ? `✓ Spec Confirmed (${m.specSignoff.signedBy.split(' ')[0]})`
+            ? `✓ Spec Confirmed (${m.specSignoff.signedBy?.split(' ')[0] || 'Signed'})`
             : '⚠️ Spec Sign-off Pending'}
         </div>
 
-        {/* Action selector & Spec Sign-off button */}
+        {/* 3. Action selector - VERTICALLY STACKED */}
         {canEdit && !isLaunched && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', width: '100%', justifyContent: 'center', marginTop: '1px' }}>
+          <div style={{ width: '100%', maxWidth: '124px', display: 'flex', justifyContent: 'center' }}>
             <select
-              style={{ fontSize: '8.5px', padding: '2px 3px', background: '#072b33', border: '1px solid rgba(20,184,166,0.4)', color: '#e2e8f0', borderRadius: '4px', cursor: 'pointer', flex: 1, minWidth: '78px', maxWidth: '96px' }}
+              style={{ fontSize: '8.5px', padding: '2px 4px', background: '#072b33', border: '1px solid rgba(20,184,166,0.4)', color: '#e2e8f0', borderRadius: '4px', cursor: 'pointer', width: '100%', boxSizing: 'border-box' }}
               value={curStatus}
               onChange={e => handleSavePOStatus(idx, e.target.value)}
-              title="Update Purchase Order action"
+              title="Update Purchase Order status"
             >
               <option value="RFQ in progress"  style={{ background: '#072b33', color: '#38bdf8'  }}>📑 RFQ in progress</option>
               <option value="Under approval"   style={{ background: '#072b33', color: '#f59e0b'  }}>⏳ Under approval</option>
               <option value="Raised"           style={{ background: '#072b33', color: '#10b981'  }}>✅ Raised</option>
             </select>
+          </div>
+        )}
+
+        {/* 4. Spec Sign-off button - VERTICALLY STACKED */}
+        {canEdit && !isLaunched && (
+          <div style={{ width: '100%', maxWidth: '124px', display: 'flex', justifyContent: 'center' }}>
             <button
               type="button"
-              onClick={() => handleOpenSpecSignoff(idx)}
-              style={specSignoffBtnStyle(m.specSignoff?.signed)}
+              onClick={() => onOpenSpecModal ? onOpenSpecModal(project.id, idx) : handleOpenSpecSignoff(idx)}
+              style={{ ...specSignoffBtnStyle(m.specSignoff?.signed), width: '100%', justifyContent: 'center', boxSizing: 'border-box', padding: '2px 6px' }}
               title={m.specSignoff?.signed
-                ? `✅ Spec Signed off by ${m.specSignoff.signedBy} on ${new Date(m.specSignoff.signedAt).toLocaleDateString()}. Click to review.`
-                : '⚠️ Technical specifications not signed off yet. Click to confirm & sign off.'}
+                ? `✅ Spec Signed off by ${m.specSignoff.signedBy} on ${new Date(m.specSignoff.signedAt).toLocaleDateString()}. Click to open Specification.`
+                : '⚠️ Technical specifications not signed off yet. Click to open Specification & sign off.'}
             >
               {m.specSignoff?.signed ? '✅ Spec Signed' : '✍️ Spec Sign-off'}
             </button>
           </div>
         )}
 
-        {/* PO Number display & edit */}
+        {/* 5. PO Number display & edit - VERTICALLY STACKED */}
         <div style={{ marginTop: '1px' }}>
           {editingPO ? (
             <div className="inline-edit-wrap" style={{ marginTop: '2px' }}>
@@ -197,9 +224,9 @@ function POCell({ m, idx, project, isLaunched, canEdit, isAdmin, onProjectUpdate
               <button className="inline-btn cancel-btn" onClick={() => setEditingPO(false)}>✕</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
               {m.poNumber ? (
-                <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: 'var(--teal)', fontWeight: '600' }} title={`PO Number: ${m.poNumber}`}>
+                <span style={{ fontFamily: 'var(--mono)', fontSize: '9.5px', color: 'var(--teal)', fontWeight: '600' }} title={`PO Number: ${m.poNumber}`}>
                   #{m.poNumber}
                 </span>
               ) : (
@@ -207,11 +234,14 @@ function POCell({ m, idx, project, isLaunched, canEdit, isAdmin, onProjectUpdate
               )}
               {canEdit && !isLaunched && (
                 <button
-                  className="edit-icon"
-                  style={{ fontSize: '8.5px', opacity: 0.7 }}
+                  className="edit-icon edit-with-text"
+                  style={{ fontSize: '8.5px', opacity: 0.85, padding: '1px 4px' }}
                   onClick={() => { setEditingPO(true); setPoVal(m.poNumber || ''); }}
                   title="Add/Edit PO Number"
-                >✏</button>
+                >
+                  <Edit2 size={8} />
+                  <span>Edit</span>
+                </button>
               )}
             </div>
           )}
@@ -228,38 +258,40 @@ function SpecSubRow({ m, idx, project, specStatus, specGov, hasSpecs, filledAll,
 
   return (
     <tr className="spec-sub-row">
-      <td colSpan="18">
+      <td colSpan="17">
         <div className="spec-sub-inner">
 
           {/* Header row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                📋 {m.name} — {m.type} Technical Specifications
+              <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <FileText size={14} /> {m.name} — {m.type} Technical Specifications
               </span>
               {m.pmCode && (
-                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)', fontWeight: '700', fontSize: '11px', background: 'rgba(0,243,255,0.08)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(0,243,255,0.2)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)', fontWeight: '600', fontSize: '11px', background: 'rgba(0,200,215,0.08)', padding: '2px 8px', borderRadius: 'var(--r-badge)', border: '1px solid rgba(0,200,215,0.2)' }}>
                   {m.pmCode}
                 </span>
               )}
               <span style={specStatusStyle(specStatus)}>{specLabel}</span>
-              {m.supplier && <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '600' }}>🚚 Supplier: {m.supplier}</span>}
+              {m.supplier && <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Truck size={12} style={{ opacity: 0.7 }} /> Supplier: {m.supplier}</span>}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
+                className="btn btn-secondary btn-sm"
                 onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, m, idx)}
-                style={{ fontSize: '11px', fontWeight: '700', padding: '5px 12px', background: 'rgba(236,72,153,0.2)', color: '#f472b6', border: '1px solid #ec4899', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 title="View / Upload Artwork"
               >
-                🎨 View Artwork ({awCode})
+                <Palette size={13} />
+                <span>View Artwork ({awCode})</span>
               </button>
               <button
-                className="spec-badge-btn"
+                className="btn btn-secondary btn-sm"
                 onClick={() => onOpenSpecModal(project.id, idx)}
-                style={{ fontSize: '11px', fontWeight: '700', padding: '5px 12px', background: 'linear-gradient(135deg, #00f3ff, #00a8b5)', color: '#002028', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                title="Open Official Yoga Bar Spec Sheet"
               >
-                📄 Open Official Yoga Bar Spec Sheet
+                <FileText size={13} style={{ color: 'var(--teal)' }} />
+                <span>Open Spec Sheet</span>
               </button>
             </div>
           </div>
@@ -377,6 +409,7 @@ export default function MaterialTimeline({
   onOpenSpecModal,
   onOpenArtworkModal,
   onOpenCrunchModal,
+  onOpenProjectDrawer,
   onProjectUpdated,
   showToast
 }) {
@@ -389,6 +422,27 @@ export default function MaterialTimeline({
   const [briefVal, setBriefVal] = useState('');
   const [specSignoffModalData, setSpecSignoffModalData] = useState({ isOpen: false, mIdx: null });
   const [adminApprovalModalData, setAdminApprovalModalData] = useState({ isOpen: false, mIdx: null });
+  const [openMenuIdx, setOpenMenuIdx] = useState(null);
+  const [copiedPM, setCopiedPM] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpenMenuIdx(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const handleCopyPM = (code) => {
+    if (!code) return;
+    navigator.clipboard?.writeText(code);
+    setCopiedPM(code);
+    if (showToast) showToast(`📋 Copied ${code} to clipboard`);
+    setTimeout(() => setCopiedPM(null), 2000);
+  };
 
   const mats = project.materials || [];
   if (!mats.length) {
@@ -563,344 +617,445 @@ export default function MaterialTimeline({
 
   return (
     <div className="expanded-mat-container">
-      <div className="expanded-mat-header">
-        <div className="expanded-mat-title sticky-tag">
-          <span style={{ fontWeight: 800, color: 'var(--white)' }}>📦 Packaging Breakdown</span>
-          <span className="expanded-mat-badge">{mats.length} Component{mats.length !== 1 ? 's' : ''}</span>
-          <span style={{ fontSize: '11px', color: 'var(--teal)', fontWeight: '800', marginLeft: '4px' }}>
-            ★ CPM: {maxConnMat.name} ({cpmSubtitle})
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-          {project.factory && (
-            <span style={{ background: 'rgba(0, 243, 255, 0.08)', padding: '3px 10px', borderRadius: '4px', border: '1px solid rgba(0, 243, 255, 0.25)', color: '#ffffff' }}>
-              🏭 Target Factory: <strong style={{ color: 'var(--teal)' }}>{project.factory}</strong>
+      {/* ── PACKAGING MATERIALS BREAKDOWN COMPACT SECTION (PASS 2) ── */}
+      <div className="pkg-breakdown-section">
+        <div className="pkg-breakdown-header">
+          <div className="pkg-breakdown-title-wrap">
+            <div className="pkg-breakdown-title">
+              <Package size={14} style={{ color: 'var(--teal)' }} />
+              PACKAGING MATERIALS
+            </div>
+            <span className="pkg-breakdown-meta">
+              {mats.length} component{mats.length !== 1 ? 's' : ''} · <span className="pkg-breakdown-cpm-tag">★ 1 critical path ({maxConnMat.name})</span>
+              {project.factory && (
+                <>
+                  <span style={{ opacity: 0.4 }}>·</span>
+                  <span className="pkg-breakdown-factory-inline">
+                    <Building size={11} style={{ opacity: 0.8 }} /> Factory: <strong style={{ color: 'var(--teal)' }}>{project.factory}</strong>
+                  </span>
+                </>
+              )}
             </span>
+          </div>
+          {project.crunchPlan && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <CrunchGateAlert crunchPlan={project.crunchPlan} onOpenCrunchModal={() => onOpenCrunchModal && onOpenCrunchModal(project)} />
+            </div>
           )}
-          <span>Inline edit <strong>PM Code</strong>, <strong>Supplier</strong>, or <strong>Brief Date</strong> · Click <strong>📋 Specs</strong> to view</span>
-          <CrunchGateAlert crunchPlan={project.crunchPlan} onOpenCrunchModal={() => onOpenCrunchModal && onOpenCrunchModal(project)} />
+        </div>
+
+        {/* Simplified Streamlined Materials Strip (one below other) */}
+        <div className="pkg-components-list-simple">
+          {mats.map((m, idx) => {
+            const isCrit = idx === cpmIdx;
+            const stage = m.stage || 'Brief';
+            const stageMs = m.milestones?.[stage];
+            const dl = stageMs ? daysFromNow(stageMs) : null;
+            const tierShort = getShortTierLabel(m.type, idx);
+            const dlTxt = dl === null ? '—' : dl > 0 ? `+${dl} days` : dl === 0 ? 'Due' : `${dl} days`;
+            const dlCls = dl === null ? '' : dl >= 3 ? 'days-ok' : dl >= 0 ? 'days-warn' : 'days-late';
+
+            return (
+              <div
+                key={idx}
+                className={`pkg-component-row-simple ${isCrit ? 'is-cpm' : ''}`}
+                onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(project, idx)}
+                style={{ cursor: onOpenProjectDrawer ? 'pointer' : 'default' }}
+                title="Click to open Project Detail Drawer"
+              >
+                <div className="pkg-row-left">
+                  <span className={`pkg-row-tier-pill ${isCrit ? 'is-cpm' : ''}`}>
+                    {tierShort}
+                    {isCrit && <span className="pkg-cpm-star">★ CPM</span>}
+                  </span>
+                  <span className="pkg-row-name" title={m.name}>{m.name}</span>
+                  <span className="pkg-row-sep">·</span>
+                  <span className="pkg-row-supplier" title={m.supplier || 'TBD'}>
+                    {m.supplier ? `Supplier: ${m.supplier}` : 'Supplier: TBD'}
+                  </span>
+                </div>
+
+                <div className="pkg-row-right">
+                  <div className="pkg-row-stage" style={{ color: STAGE_COLORS[stage] || 'var(--teal)' }}>
+                    <span className="stage-dot" style={{ background: STAGE_COLORS[stage] || 'var(--teal)' }}></span>
+                    <span>{stage}</span>
+                  </div>
+                  <div className={`pkg-card-days ${dlCls}`}>{dlTxt}</div>
+                  <ChevronRight size={13} className="pkg-row-chevron" />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <table className="mat-inner-table" style={{ tableLayout: 'fixed', minWidth: '2260px', width: '100%' }}>
-        <thead>
-          <tr>
-            <th style={{ width: '75px',  textAlign: 'center' }}>Specs / #</th>
-            <th style={{ width: '135px' }}>PM Code</th>
-            <th style={{ width: '170px' }}>Material</th>
-            <th style={{ width: '150px' }}>Supplier</th>
-            <th style={{ width: '160px' }}>Print / Lead Time</th>
-            <th style={{ width: '115px' }}>Stage</th>
-            <th style={{ width: '95px'  }}>Days Left</th>
-            <th style={{ width: '170px' }}>Actions</th>
-            <th style={{ width: '115px', textAlign: 'center' }}>Brief</th>
-            <th style={{ width: '105px', textAlign: 'center' }}>Sample</th>
-            <th style={{ width: '105px', textAlign: 'center' }}>Trial</th>
-            <th style={{ width: '105px', textAlign: 'center' }}>KLD</th>
-            <th style={{ width: '105px', textAlign: 'center' }}>Artwork</th>
-            <th style={{ width: '185px', textAlign: 'center', background: 'rgba(79, 140, 255, 0.08)', borderLeft: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', color: 'var(--info)' }}>
-                <span>🛒 Purchase Order</span>
-              </div>
-              <div style={{ fontSize: '8px', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.4px', marginTop: '1px', whiteSpace: 'nowrap' }}>
-                PARALLEL · SPEC SIGNOFF · REQ. FOR PRINT
-              </div>
-            </th>
-            <th style={{ width: '105px', textAlign: 'center' }}>VPDF</th>
-            <th style={{ width: '125px', textAlign: 'center' }}>🖨 Printing</th>
-            <th style={{ width: '110px', textAlign: 'center' }}>Dispatch</th>
-            <th style={{ minWidth: '160px', textAlign: 'center', background: 'rgba(0, 200, 215, 0.08)', borderLeft: '1px solid var(--border-color)', color: 'var(--teal)' }}>🔗 Connectivity</th>
-          </tr>
-        </thead>
-        <tbody>
-          {mats.map((m, idx) => {
-            const isCrit       = idx === cpmIdx;
-            const isTiedWithCPM = !isCrit && m.milestones?.Connectivity === maxConnMat.milestones?.Connectivity;
-            const stage        = m.stage || 'Brief';
-            const atConn       = stage === 'Connectivity';
-            const atBrief      = stage === 'Brief';
-            const stageMs      = m.milestones?.[stage];
-            const dl           = stageMs ? daysFromNow(stageMs) : null;
+      {/* ── ENTERPRISE DATA GRID (PASS 2) ── */}
+      <div className="mat-inner-table-wrapper">
+        <table className="mat-inner-table" style={{ tableLayout: 'fixed', minWidth: '2050px', width: '100%' }}>
+          <thead>
+            <tr>
+              <th className="sticky-material-header" style={{ width: '260px' }}>Material</th>
+              <th style={{ width: '150px' }}>Supplier</th>
+              <th style={{ width: '120px' }}>Lead Time</th>
+              <th style={{ width: '110px' }}>Stage</th>
+              <th style={{ width: '100px' }}>Status</th>
+              <th style={{ width: '90px' }}>Days Left</th>
+              <th style={{ width: '105px' }}>Actions</th>
+              <th style={{ width: '105px', textAlign: 'center' }}>Brief</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Sample</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Trial</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>KLD</th>
+              <th style={{ width: '100px', textAlign: 'center' }}>Artwork</th>
+              <th style={{ width: '175px', textAlign: 'center', background: 'rgba(79, 140, 255, 0.08)', borderLeft: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', color: 'var(--info)' }}>
+                  <span>🛒 Purchase Order</span>
+                </div>
+                <div style={{ fontSize: '8px', color: 'var(--text-muted)', fontWeight: '600', letterSpacing: '0.4px', marginTop: '1px', whiteSpace: 'nowrap' }}>
+                  PARALLEL · SPEC SIGNED · REQ. FOR PRINT
+                </div>
+              </th>
+              <th style={{ width: '100px', textAlign: 'center' }}>VPDF</th>
+              <th style={{ width: '115px', textAlign: 'center' }}>🖨 Printing</th>
+              <th style={{ width: '105px', textAlign: 'center' }}>Dispatch</th>
+              <th style={{ minWidth: '150px', textAlign: 'center', background: 'rgba(0, 200, 215, 0.08)', borderLeft: '1px solid var(--border-color)', color: 'var(--teal)' }}>🔗 Connectivity</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mats.map((m, idx) => {
+              const isCrit       = idx === cpmIdx;
+              const isTiedWithCPM = !isCrit && m.milestones?.Connectivity === maxConnMat.milestones?.Connectivity;
+              const stage        = m.stage || 'Brief';
+              const atConn       = stage === 'Connectivity';
+              const atBrief      = stage === 'Brief';
+              const stageMs      = m.milestones?.[stage];
+              const dl           = stageMs ? daysFromNow(stageMs) : null;
 
-            // Fixed: was `dl > 7 ? 'days-ok' : dl >= 3 ? 'days-ok'` (both same — simplified)
-            const dlCls  = dl === null ? '' : dl >= 3 ? 'days-ok' : dl >= 0 ? 'days-warn' : 'days-late';
-            const dlTxt  = dl === null ? '—' : dl > 0 ? `+${dl}d` : dl === 0 ? 'DUE' : `${dl}d 🔴`;
+              const dlCls  = dl === null ? '' : dl >= 3 ? 'days-ok' : dl >= 0 ? 'days-warn' : 'days-late';
+              const dlTxt  = dl === null ? '—' : dl > 0 ? `+${dl}d` : dl === 0 ? 'DUE' : `${dl}d 🔴`;
 
-            const specs        = m.specs || {};
-            const sf           = getSpecFields(m.type);
-            const filledAll    = sf.filter(f => specs[f.k]);
-            const hasSpecs     = filledAll.length > 0 || (m.specSheet?.parameters?.length > 0);
-            const isSpecOpen   = !!openSpecs[idx];
+              const specs        = m.specs || {};
+              const sf           = getSpecFields(m.type);
+              const filledAll    = sf.filter(f => specs[f.k]);
+              const hasSpecs     = filledAll.length > 0 || (m.specSheet?.parameters?.length > 0);
+              const isSpecOpen   = !!openSpecs[idx];
 
-            const specGov      = m.specSheet?.governance || {};
-            const specStatus   = specGov.status || 'DRAFT';
-            const awCode       = m.artworkCode || getArtworkCode(m.pmCode);
-            const hasAw        = hasArtwork(m);
-            const matSub       = getMaterialDisplaySubtitle(m);
+              const specGov      = m.specSheet?.governance || {};
+              const specStatus   = specGov.status || 'DRAFT';
+              const awCode       = m.artworkCode || getArtworkCode(m.pmCode);
+              const hasAw        = hasArtwork(m);
+              const tierShort    = getShortTierLabel(m.type, idx);
 
-            // Spec button label & class
-            const SPEC_BTN_MAP = {
-              APPROVED:                 { cls: 'spec-approved', label: '✅ Approved',      title: `Specs Approved by Packaging Head (${specGov.approvedBy?.name || 'Alexsander'})` },
-              CHECKED_PENDING_APPROVAL: { cls: 'spec-checked',  label: '🛡️ PM Checked',   title: `Checked by Project Manager (${specGov.checkedBy?.name || 'PM'}). Awaiting Packaging Head Approval.` },
-              PENDING_CHECK:            { cls: 'spec-pending',  label: '⏳ In Review',     title: 'Submitted for Review. Awaiting Project Manager Check.' },
-              REVISION_REQUESTED:       { cls: 'spec-rejected', label: '⚠️ Revision',      title: `Revision Requested: ${specGov.comments || 'Please revise specifications'}` },
-            };
-            const specBtn = SPEC_BTN_MAP[specStatus] || { cls: '', label: '✎ Specs', title: 'Edit Specifications' };
-            const specBtnCls = `mat-act-btn mat-act-specs ${specBtn.cls}`;
+              return (
+                <React.Fragment key={idx}>
+                  <tr className={isCrit ? 'critical-path' : ''}>
 
-            return (
-              <React.Fragment key={idx}>
-                <tr className={isCrit ? 'critical-path' : ''}>
+                    {/* MATERIAL COLUMN (Sticky Anchor - Level 1 Priority) */}
+                    <td className="sticky-material-col">
+                      <div className="mat-cell-content">
+                        <div className={`mat-tier-label ${isCrit ? 'is-cpm' : ''}`}>
+                          {isCrit ? '★ CPM · ' : ''}{tierShort}
+                        </div>
+                        <div
+                          className="mat-name-title"
+                          title={`${m.name} — Click to open Project Detail Drawer`}
+                          onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(project, idx)}
+                          style={{ cursor: onOpenProjectDrawer ? 'pointer' : 'default' }}
+                        >
+                          {m.name}
+                        </div>
 
-                  {/* Specs / # column */}
-                  <td style={{ textAlign: 'center', verticalAlign: 'middle', padding: '8px 4px' }}>
-                    <button
-                      className={`spec-pill-btn ${isSpecOpen ? 'active' : ''} ${specStatus === 'APPROVED' ? 'spec-approved' : ''}`}
-                      onClick={() => toggleSpec(idx)}
-                      title={hasSpecs ? `Toggle specifications (${specStatus})` : 'Add technical specifications'}
-                    >
-                      {specStatus === 'APPROVED' ? '✅' : '📋'} {isSpecOpen ? 'Hide' : 'Specs'}
-                    </button>
-                    {isCrit ? (
-                      <div style={{ color: 'var(--teal)', fontSize: '8.5px', fontWeight: '800', marginTop: '3px' }} title="Primary Critical Path Material (determined by bottleneck date & packaging hierarchy)">★ CPM</div>
-                    ) : isTiedWithCPM ? (
-                      <div style={{ color: 'var(--amber)', fontSize: '8.5px', fontWeight: '700', marginTop: '3px' }} title={`Tied at latest readiness date (${fmt(m.milestones?.Connectivity)}) — Secondary priority by Packaging Hierarchy (${getTierName(getMaterialHierarchyTier(m.type))})`}>#{idx + 1}</div>
-                    ) : (
-                      <div style={{ color: 'var(--text-muted)', fontSize: '9.5px', fontWeight: '700', marginTop: '3px' }}>#{idx + 1}</div>
-                    )}
-                  </td>
-
-                  {/* PM Code column */}
-                  <td style={{ overflow: 'visible' }}>
-                    <div className="editable-cell" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '3px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        {editingPMCode === idx ? (
-                          <div className="inline-edit-wrap" style={{ display: 'flex', alignItems: 'center' }}>
-                            <span style={{
-                              background: 'rgba(0, 200, 215, 0.08)',
-                              border: '1px solid rgba(0, 200, 215, 0.25)',
-                              borderRight: 'none',
-                              color: 'var(--teal)',
-                              fontFamily: 'var(--mono)',
-                              fontSize: '10px',
-                              fontWeight: '600',
-                              padding: '2px 5px',
-                              borderRadius: '4px 0 0 4px',
-                              whiteSpace: 'nowrap',
-                              userSelect: 'none'
-                            }}>
-                              {getPMPrefix(m.type)}
-                            </span>
-                            <input
-                              className="inline-edit-input"
-                              type="text"
-                              inputMode="numeric"
-                              value={pmCodeVal}
-                              onChange={e => {
-                                const extracted = extractPMNumber(e.target.value, m.type);
-                                setPmCodeVal(extracted.replace(/[^0-9]/g, ''));
-                              }}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') handleSavePMCode(idx);
-                                if (e.key === 'Escape') setEditingPMCode(null);
-                              }}
-                              placeholder={String(50560 + idx)}
-                              style={{ borderRadius: '0 4px 4px 0', width: '65px' }}
-                              title="Enter number only"
-                              autoFocus
-                            />
-                            <button className="inline-btn save-btn" onClick={() => handleSavePMCode(idx)}>✓</button>
-                            <button className="inline-btn cancel-btn" onClick={() => setEditingPMCode(null)}>✕</button>
-                          </div>
-                        ) : (
-                          <>
-                            {m.pmCode ? (
-                              <span style={{ fontFamily: 'var(--mono)', color: 'var(--teal)', fontSize: '10.5px', fontWeight: '700' }} title="Specification PM Code">
-                                {m.pmCode}
+                        {/* Codes Section: Spec (PM Code) & Artwork (AW Code) */}
+                        <div className="mat-cell-codes" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '3px' }}>
+                          {/* 1. PM Code Row -> Click leads to Specification */}
+                          {editingPMCode === idx ? (
+                            <div className="inline-edit-wrap" style={{ display: 'flex', alignItems: 'center' }}>
+                              <span style={{
+                                background: 'rgba(0, 200, 215, 0.08)',
+                                border: '1px solid rgba(0, 200, 215, 0.25)',
+                                borderRight: 'none',
+                                color: 'var(--teal)',
+                                fontFamily: 'var(--mono)',
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                padding: '2px 5px',
+                                borderRadius: '4px 0 0 4px',
+                                whiteSpace: 'nowrap',
+                                userSelect: 'none'
+                              }}>
+                                {getPMPrefix(m.type)}
                               </span>
-                            ) : (
-                              <span style={EMPTY_DASH}>—</span>
-                            )}
-                            {canEdit && (
-                              <button className="edit-icon" onClick={() => handleStartEditPMCode(idx, m.pmCode)} title="Edit PM Code">✏</button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                      {/* Linked AW Code */}
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); onOpenArtworkModal && onOpenArtworkModal(project, m, idx); }}
-                        style={{ ...artworkBtnStyle(hasAw), borderRadius: '3px', padding: '1px 5px', fontSize: '8.5px', fontFamily: 'var(--mono)', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '2px', whiteSpace: 'nowrap' }}
-                        title={hasAw ? `Artwork ${awCode} uploaded. Click to view.` : `Artwork ${awCode} pending. Click to upload.`}
-                      >
-                        🎨 {awCode} {hasAw ? '✓' : '⏳'}
-                      </button>
-                    </div>
-                  </td>
-
-                  {/* Material column */}
-                  <td>
-                    <strong style={{ fontSize: '11.5px', color: 'var(--text-main)' }}>{m.name}</strong>
-                    <br />
-                    <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>
-                      {matSub.typeText}
-                      {matSub.typeText && matSub.tierText ? ' · ' : ''}
-                      {matSub.tierText && (
-                        <span style={{ color: 'var(--teal)', opacity: 0.85, fontSize: '9px' }}>{matSub.tierText}</span>
-                      )}
-                    </span>
-                  </td>
-
-                  {/* Supplier column */}
-                  <td style={{ overflow: 'visible' }}>
-                    <div className="editable-cell">
-                      {editingSupplier === idx ? (
-                        <div className="inline-edit-wrap">
-                          <input
-                            className="inline-edit-input"
-                            value={supplierVal}
-                            onChange={e => setSupplierVal(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleSaveSupplier(idx);
-                              if (e.key === 'Escape') setEditingSupplier(null);
-                            }}
-                            placeholder="Supplier..."
-                            autoFocus
-                          />
-                          <button className="inline-btn save-btn" onClick={() => handleSaveSupplier(idx)}>✓</button>
-                          <button className="inline-btn cancel-btn" onClick={() => setEditingSupplier(null)}>✕</button>
-                        </div>
-                      ) : (
-                        <>
-                          {m.supplier ? (
-                            <span style={{ fontSize: '10.5px', fontWeight: '600', color: 'var(--text-main)' }} title={m.supplier}>
-                              🚚 {m.supplier}
-                            </span>
-                          ) : (
-                            <span style={EMPTY_DASH}>—</span>
-                          )}
-                          {canEdit && (
-                            <button className="edit-icon" onClick={() => handleStartEditSupplier(idx, m.supplier)} title="Edit Material Supplier">✏</button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Print / Lead Time column */}
-                  <td style={{ verticalAlign: 'middle' }}>
-                    {isPouch(m.type) ? (
-                      (!m.printType || m.printType === 'Not Applicable') ? (
-                        <div>
-                          <div style={{ display: 'inline-block', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '4px', padding: '2px 6px', fontSize: '9px', fontWeight: '700', marginBottom: '4px' }}>
-                            ⚠️ Confirm Print
-                          </div>
-                          {canEdit && (
-                            <select
-                              style={{ fontSize: '9px', padding: '2px 4px', background: '#072b33', border: '1px solid #14b8a6', color: '#fff', borderRadius: '4px', width: '100%', cursor: 'pointer' }}
-                              value=""
-                              onChange={e => handleSavePrintType(idx, e.target.value)}
-                            >
-                              <option value="" disabled>Choose Print...</option>
-                              <option value="Digital Print">Digital (15d)</option>
-                              <option value="Flexo Print">Flexo (21d)</option>
-                              <option value="Gravure Print">Gravure (35d)</option>
-                            </select>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          <div>
-                            <span className={printCls(m.printType)}>{m.printType}</span>
-                            <div style={{ color: 'var(--teal)', fontSize: '9px', fontWeight: '700', marginTop: '2px' }}>
-                              ⏱ {POUCH_PRINT_LEAD[m.printType] || 21}d lead
+                              <input
+                                className="inline-edit-input"
+                                type="text"
+                                inputMode="numeric"
+                                value={pmCodeVal}
+                                onChange={e => {
+                                  const extracted = extractPMNumber(e.target.value, m.type);
+                                  setPmCodeVal(extracted.replace(/[^0-9]/g, ''));
+                                }}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSavePMCode(idx);
+                                  if (e.key === 'Escape') setEditingPMCode(null);
+                                }}
+                                placeholder={String(50560 + idx)}
+                                style={{ borderRadius: '0 4px 4px 0', width: '65px' }}
+                                title="Enter number only"
+                                autoFocus
+                              />
+                              <button className="inline-btn save-btn" onClick={() => handleSavePMCode(idx)}>✓</button>
+                              <button className="inline-btn cancel-btn" onClick={() => setEditingPMCode(null)}>✕</button>
                             </div>
-                          </div>
-                          {canEdit && (
-                            <select
-                              style={{ fontSize: '8.5px', padding: '1px 3px', background: '#072b33', border: '1px solid rgba(20,184,166,0.4)', color: 'var(--teal)', borderRadius: '3px', cursor: 'pointer' }}
-                              value={m.printType}
-                              onChange={e => handleSavePrintType(idx, e.target.value)}
-                              title="Change Print Process"
+                          ) : (
+                            <div className="mat-code-pill-row">
+                              <button
+                                type="button"
+                                className="mat-code-badge mat-pm-badge"
+                                onClick={() => onOpenSpecModal && onOpenSpecModal(project.id, idx)}
+                                title={`Specification (${m.pmCode || 'No PM Code'}) — Click to open Spec Sheet`}
+                              >
+                                <FileText size={10} />
+                                <span>{m.pmCode || 'No PM Code'}</span>
+                              </button>
+                              {m.pmCode && (
+                                <button
+                                  type="button"
+                                  className="icon-action-btn"
+                                  onClick={(e) => { e.stopPropagation(); handleCopyPM(m.pmCode); }}
+                                  title="Copy PM Code to clipboard"
+                                >
+                                  {copiedPM === m.pmCode ? <Check size={10} style={{ color: 'var(--teal)' }} /> : <Copy size={10} />}
+                                </button>
+                              )}
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  className="edit-icon edit-with-text"
+                                  onClick={(e) => { e.stopPropagation(); handleStartEditPMCode(idx, m.pmCode); }}
+                                  title="Edit PM Code"
+                                >
+                                  <Edit2 size={9} />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {/* 2. Artwork Code Row -> Click leads to Artwork Viewer */}
+                          <div className="mat-code-pill-row">
+                            <button
+                              type="button"
+                              className="mat-code-badge mat-aw-badge"
+                              onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, m, idx)}
+                              title={`Artwork (${awCode}) — Click to view/upload Artwork`}
                             >
-                              <option value="Digital Print" style={{ background: '#072b33', color: '#fff' }}>Digital (15d)</option>
-                              <option value="Flexo Print"   style={{ background: '#072b33', color: '#fff' }}>Flexo (21d)</option>
-                              <option value="Gravure Print" style={{ background: '#072b33', color: '#fff' }}>Gravure (35d)</option>
-                            </select>
+                              <Palette size={10} />
+                              <span>{awCode}</span>
+                              {hasAw && <span className="aw-indicator-dot" title="Artwork files uploaded" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* SUPPLIER COLUMN */}
+                    <td>
+                      <div className="supplier-cell-content">
+                        <div className="supplier-primary-name">
+                          {editingSupplier === idx ? (
+                            <div className="inline-edit-wrap">
+                              <input
+                                className="inline-edit-input"
+                                value={supplierVal}
+                                onChange={e => setSupplierVal(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveSupplier(idx);
+                                  if (e.key === 'Escape') setEditingSupplier(null);
+                                }}
+                                placeholder="Supplier..."
+                                autoFocus
+                              />
+                              <button className="inline-btn save-btn" onClick={() => handleSaveSupplier(idx)}>✓</button>
+                              <button className="inline-btn cancel-btn" onClick={() => setEditingSupplier(null)}>✕</button>
+                            </div>
+                          ) : (
+                            <>
+                              <span>{m.supplier || <span style={EMPTY_DASH}>—</span>}</span>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  className="edit-icon edit-with-text"
+                                  onClick={() => handleStartEditSupplier(idx, m.supplier)}
+                                  title="Edit Material Supplier"
+                                >
+                                  <Edit2 size={9} />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
-                      )
-                    ) : (
-                      <div>
-                        <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--teal)' }}>
-                          ⏱ {getMaterialLeadTime(m)}d lead
-                        </span>
                         {m.printType && m.printType !== 'Not Applicable' && (
-                          <div style={{ marginTop: '2px' }}>
-                            <span className={printCls(m.printType)} style={{ fontSize: '8.5px', padding: '1px 4px' }}>{m.printType}</span>
-                          </div>
+                          <div className="supplier-secondary-meta">{m.printType}</div>
                         )}
                       </div>
-                    )}
-                  </td>
+                    </td>
 
-                  {/* Stage column */}
-                  <td>
-                    <span className="stage-badge" style={{ background: `${STAGE_COLORS[stage]}18`, border: `1px solid ${STAGE_COLORS[stage]}40`, color: STAGE_COLORS[stage] }}>
-                      <span className="stage-dot" style={{ background: STAGE_COLORS[stage] }}></span>{stage}
-                    </span>
-                    {stage === 'VPDF' && (
-                      <div style={{ marginTop: '3px' }}>
-                        <button
-                          type="button"
-                          onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, m, idx)}
-                          style={artworkBtnStyle(hasAw)}
-                          title={`View Artwork (${awCode}) for VPDF stage review`}
-                        >
-                          🎨 {hasAw ? 'View AW' : '+ AW'}
-                        </button>
+                    {/* LEAD TIME COLUMN */}
+                    <td>
+                      <div className="leadtime-cell-content">
+                        <div className="leadtime-primary">
+                          {isPouch(m.type)
+                            ? `${POUCH_PRINT_LEAD[m.printType] || getMaterialLeadTime(m)} days`
+                            : `${getMaterialLeadTime(m)} days`}
+                        </div>
+                        {isPouch(m.type) ? (
+                          canEdit ? (
+                            <select
+                              style={{
+                                fontSize: '9px',
+                                padding: '1px 3px',
+                                background: 'var(--surface-secondary)',
+                                border: '1px solid var(--border-color)',
+                                color: 'var(--text-secondary)',
+                                borderRadius: '3px',
+                                cursor: 'pointer',
+                                maxWidth: '95px'
+                              }}
+                              value={m.printType || ''}
+                              onChange={e => handleSavePrintType(idx, e.target.value)}
+                            >
+                              <option value="" disabled>Choose...</option>
+                              <option value="Digital Print">Digital</option>
+                              <option value="Flexo Print">Flexo</option>
+                              <option value="Gravure Print">Gravure</option>
+                            </select>
+                          ) : (
+                            <div className="leadtime-secondary">{m.printType || 'Pouch'}</div>
+                          )
+                        ) : (
+                          m.printType && m.printType !== 'Not Applicable' ? (
+                            <div className="leadtime-secondary">{m.printType}</div>
+                          ) : null
+                        )}
                       </div>
-                    )}
-                  </td>
+                    </td>
 
-                  {/* Days Left column */}
-                  <td>{dl !== null ? <span className={`days-pill ${dlCls}`}>{dlTxt}</span> : '—'}</td>
+                    {/* STAGE COLUMN */}
+                    <td>
+                      <div className="stage-cell-pill" style={{
+                        background: `${STAGE_COLORS[stage] || 'var(--teal)'}14`,
+                        border: `1px solid ${STAGE_COLORS[stage] || 'var(--teal)'}35`,
+                        color: STAGE_COLORS[stage] || 'var(--teal)'
+                      }}>
+                        <span className="stage-dot" style={{ background: STAGE_COLORS[stage] || 'var(--teal)' }}></span>
+                        <span>{stage}</span>
+                      </div>
+                      {stage === 'VPDF' && (
+                        <div style={{ marginTop: '3px' }}>
+                          <button
+                            type="button"
+                            onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, m, idx)}
+                            style={artworkBtnStyle(hasAw)}
+                            title={`View Artwork (${awCode}) for VPDF stage review`}
+                          >
+                            🎨 {hasAw ? 'View AW' : '+ AW'}
+                          </button>
+                        </div>
+                      )}
+                    </td>
 
-                  {/* Actions column */}
-                  <td style={{ whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      {!isLaunched && (
-                        <>
-                          {atConn ? (
-                            <span style={{ color: 'var(--teal)', fontSize: '9.5px', fontWeight: '800', padding: '0 4px' }}>✓ Ready</span>
+                    {/* STATUS COLUMN */}
+                    <td>
+                      <div className="status-cell-wrap">
+                        {atConn ? (
+                          <span className="status-pill-text" style={{ color: 'var(--teal)' }}>Ready</span>
+                        ) : dl === null ? (
+                          <span className="status-pill-text" style={{ color: 'var(--text-muted)' }}>On Track</span>
+                        ) : dl < 0 ? (
+                          <span className="status-pill-text" style={{ color: 'var(--danger)' }}>Overdue</span>
+                        ) : dl <= 2 ? (
+                          <span className="status-pill-text" style={{ color: 'var(--warning)' }}>Due Soon</span>
+                        ) : (
+                          <span className="status-pill-text" style={{ color: 'var(--success)' }}>On Track</span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* DAYS LEFT COLUMN */}
+                    <td>
+                      {dl !== null ? (
+                        <span className={`days-pill ${dlCls}`} style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)' }}>
+                          {dlTxt}
+                        </span>
+                      ) : (
+                        <span style={EMPTY_DASH}>—</span>
+                      )}
+                    </td>
+
+                    {/* ACTIONS COLUMN */}
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div className="mat-actions-group">
+                        {!isLaunched && (
+                          atConn ? (
+                            <span style={{ color: 'var(--teal)', fontSize: '10.5px', fontWeight: '600', padding: '0 4px' }}>Ready</span>
                           ) : canAdvance ? (
-                            <button className="mat-act-btn mat-act-next" onClick={() => handleAdvanceClick(idx)} title="Advance Material to Next Stage">
-                              ▶ Next
+                            <button
+                              className="btn btn-primary btn-sm mat-act-primary"
+                              onClick={() => handleAdvanceClick(idx)}
+                              title={`Advance ${m.name} to next stage`}
+                              style={{ padding: '3px 8px', fontSize: '10.5px', gap: '3px' }}
+                            >
+                              <span>Next</span> <ArrowRight size={11} />
                             </button>
-                          ) : null}
-                          {canRevoke && !atBrief && (
-                            <button className="mat-act-btn mat-act-revoke" onClick={() => onRevokeMaterial(project.id, idx)} title="Revoke Material Stage (Admin / Super Admin)">
-                              ↩
-                            </button>
+                          ) : null
+                        )}
+
+                        {/* Three dots dropdown */}
+                        <div className="mat-more-wrap" style={{ position: 'relative' }}>
+                          <button
+                            className="btn btn-ghost btn-sm mat-act-more"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuIdx(openMenuIdx === idx ? null : idx);
+                            }}
+                            title="More actions"
+                            style={{ padding: '3px 5px' }}
+                          >
+                            <MoreVertical size={13} />
+                          </button>
+                          {openMenuIdx === idx && (
+                            <div className="mat-more-menu" ref={menuRef}>
+                              <button
+                                className="mat-more-menu-item"
+                                onClick={() => { setOpenMenuIdx(null); onOpenSpecModal(project.id, idx); }}
+                              >
+                                <FileText size={12} style={{ color: 'var(--teal)' }} /> Open Spec Sheet
+                              </button>
+                              <button
+                                className="mat-more-menu-item"
+                                onClick={() => { setOpenMenuIdx(null); onOpenArtworkModal && onOpenArtworkModal(project, m, idx); }}
+                              >
+                                <Palette size={12} style={{ color: '#c084fc' }} /> Open Artwork
+                              </button>
+                              <button
+                                className="mat-more-menu-item"
+                                onClick={() => { setOpenMenuIdx(null); onOpenSpecModal ? onOpenSpecModal(project.id, idx) : handleOpenSpecSignoff(idx); }}
+                              >
+                                <Check size={12} style={{ color: 'var(--success)' }} /> {m.specSignoff?.signed ? 'Spec Signed' : 'Mark Spec Signed'}
+                              </button>
+                              {canRevoke && stage !== 'Brief' && (
+                                <button
+                                  className="mat-more-menu-item text-danger"
+                                  onClick={() => { setOpenMenuIdx(null); onRevokeMaterial(project.id, idx); }}
+                                >
+                                  <RotateCcw size={12} /> Revoke Stage
+                                </button>
+                              )}
+                            </div>
                           )}
-                        </>
-                      )}
-                      {(stage === 'VPDF' || hasAw) && (
-                        <button
-                          className="mat-act-btn"
-                          onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, m, idx)}
-                          style={{ background: stage === 'VPDF' ? 'rgba(236,72,153,0.22)' : 'rgba(236,72,153,0.12)', border: `1px solid ${stage === 'VPDF' ? '#ec4899' : 'rgba(236,72,153,0.4)'}`, color: '#f472b6', fontWeight: '800' }}
-                          title={`View Artwork (${awCode}) uploaded during specification`}
-                        >
-                          🎨 AW
-                        </button>
-                      )}
-                      <button className={specBtnCls} onClick={() => onOpenSpecModal(project.id, idx)} title={specBtn.title}>
-                        {specBtn.label}
-                      </button>
-                    </div>
-                  </td>
+                        </div>
+                      </div>
+                    </td>
 
                   {/* Brief Date column */}
                   <td style={{ textAlign: 'center', verticalAlign: 'middle', overflow: 'visible', padding: '6px 4px' }}>
@@ -932,11 +1087,15 @@ export default function MaterialTimeline({
                         </span>
                         {canEdit && (
                           <button
-                            className="edit-icon"
+                            type="button"
+                            className="edit-icon edit-with-text"
                             onClick={() => handleStartEditBrief(idx, m.briefDate || m.milestones?.Brief || project.briefDate)}
                             title="Edit Packaging Brief Date"
                             style={{ padding: '0 2px' }}
-                          >✏</button>
+                          >
+                            <Edit2 size={9} />
+                            <span>Edit</span>
+                          </button>
                         )}
                       </div>
                     )}
@@ -960,6 +1119,7 @@ export default function MaterialTimeline({
                     showToast={showToast}
                     handleSavePOStatus={handleSavePOStatus}
                     handleOpenSpecSignoff={handleOpenSpecSignoff}
+                    onOpenSpecModal={onOpenSpecModal}
                   />
 
                   {/* VPDF milestone column */}
@@ -1010,17 +1170,16 @@ export default function MaterialTimeline({
           })}
         </tbody>
       </table>
+      </div>
 
       <div className="expanded-mat-footer">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ color: 'var(--teal)', fontWeight: '800' }}>★ CPM = Critical Path Material</span>
-          <span style={{ opacity: 0.7 }}>· Governed by bottleneck date + Packaging Hierarchy</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: 0.85 }}>
-          <span>Click <strong>📋 Specs</strong> to view &amp; sign off</span>
-          <span>·</span>
-          <span><strong>🛒 Purchase Order</strong> required before print</span>
-        </div>
+        <span style={{ color: 'var(--teal)', fontWeight: '800' }}>★ CPM = Critical Path Material</span>
+        <span className="footer-sep">·</span>
+        <span style={{ opacity: 0.75 }}>Governed by bottleneck date + Packaging Hierarchy</span>
+        <span className="footer-sep">·</span>
+        <span>Click <strong>📋 Specs</strong> to view &amp; sign off</span>
+        <span className="footer-sep">·</span>
+        <span><strong>🛒 Purchase Order</strong> required before print</span>
       </div>
 
       {/* Spec Sign-Off Modal */}

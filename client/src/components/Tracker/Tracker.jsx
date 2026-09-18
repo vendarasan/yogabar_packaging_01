@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Rocket, Play, RotateCcw, Edit2, Trash2, FileText, Check, X, Search, Zap, ChevronDown, ChevronRight, PanelRight } from 'lucide-react';
 import MaterialTimeline from './MaterialTimeline';
 import CrunchTimelineModal from '../Modals/CrunchTimelineModal';
 import {
@@ -24,6 +25,7 @@ export default function Tracker({
   onOpenLaunchModal,
   onOpenBriefModal,
   onOpenDetailModal,
+  onOpenProjectDrawer,
   onAdvanceMaterial,
   onRevokeMaterial,
   onOpenSpecModal,
@@ -107,8 +109,18 @@ export default function Tracker({
   };
 
   const filteredProjects = (projects || []).filter(p => {
-    const q = (searchQuery || '').toLowerCase();
-    const matchesSearch = !q || [p.id, p.fgCode, p.projectName, p.supplier, p.factory, p.grammage, p.description, p.comments].some(v => (v || '').toLowerCase().includes(q));
+    const q = (searchQuery || '').toLowerCase().trim();
+    const matchesSearch = !q || [
+      p.id,
+      p.fgCode,
+      p.projectName,
+      p.supplier,
+      p.factory,
+      p.grammage,
+      p.description,
+      p.comments,
+      ...(p.materials || []).flatMap(m => [m.name, m.pmCode, m.supplier, m.type, m.printType])
+    ].some(v => (v || '').toLowerCase().includes(q));
     const matchesStage = !stageFilter || getProjectStage(p) === stageFilter;
     const matchesStatus = !statusFilter || p.status === statusFilter;
     return matchesSearch && matchesStage && matchesStatus;
@@ -180,9 +192,10 @@ export default function Tracker({
             <input
               className="search-box"
               type="text"
-              placeholder="🔍 Search…"
+              placeholder="🔍 Search material, PM code, project..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              style={{ minWidth: '240px' }}
             />
             <select className="filter-sel" value={stageFilter} onChange={e => setStageFilter(e.target.value)}>
               <option value="">All Stages</option>
@@ -204,12 +217,27 @@ export default function Tracker({
               <option>Delayed</option>
               <option>Launched</option>
             </select>
+            {(searchQuery || stageFilter || statusFilter) && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStageFilter('');
+                  setStatusFilter('');
+                }}
+                title="Clear all filters"
+                style={{ fontSize: '11px', color: 'var(--text-muted)' }}
+              >
+                ✕ Clear
+              </button>
+            )}
           </div>
         </div>
 
         {filteredProjects.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">🔍</div>
+            <div className="empty-icon"><Search size={32} style={{ opacity: 0.4 }} /></div>
             <div className="empty-title">No projects found</div>
             <div className="empty-sub">Adjust filters or search</div>
           </div>
@@ -218,9 +246,9 @@ export default function Tracker({
             <table className="modern-mat-table" style={{ tableLayout: 'fixed', minWidth: '2260px', width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '40px', padding: '8px 4px', textAlign: 'center' }}></th>
-                  <th style={{ width: '130px' }}>FG Code</th>
-                  <th style={{ width: '210px' }}>Project Name</th>
+                  <th className="sticky-proj-th-expand" style={{ width: '40px', padding: '8px 4px', textAlign: 'center' }}></th>
+                  <th className="sticky-proj-th-fg" style={{ width: '130px' }}>FG Code</th>
+                  <th className="sticky-proj-th-name" style={{ width: '210px' }}>Project Name</th>
                   <th style={{ width: '160px' }}>Stage &amp; Days Left</th>
                   <th style={{ width: '50px', textAlign: 'center' }}>LT</th>
                   <th style={{ width: '110px', textAlign: 'center' }}>Status</th>
@@ -254,18 +282,19 @@ export default function Tracker({
                   return (
                     <React.Fragment key={p.id}>
                       <tr className={`${rowCls} ${editingFG === p.id || editingFactory === p.id || editingDesc === p.id ? 'tracker-edit-row' : ''}`}>
-                        <td className="expand-cell" style={{ boxShadow: `inset 3px 0 0 ${lt === 'ok' ? 'var(--green)' : lt === 'warn' ? 'var(--amber)' : 'var(--red)'}`, background: 'var(--navy-light)', textAlign: 'center', padding: '6px 4px' }}>
+                        <td className="expand-cell sticky-proj-td-expand" style={{ boxShadow: `inset 3px 0 0 ${lt === 'ok' ? 'var(--green)' : lt === 'warn' ? 'var(--amber)' : 'var(--red)'}`, textAlign: 'center', padding: '6px 4px' }}>
                           <button
+                            type="button"
                             className={`row-expand-btn ${exp ? 'expanded' : ''}`}
                             onClick={() => toggleExpand(p.id)}
                             title={exp ? 'Collapse packaging materials' : 'Expand packaging materials'}
                           >
-                            {exp ? '▼' : '▶'}
+                            {exp ? <ChevronDown size={13} strokeWidth={2.4} /> : <ChevronRight size={13} strokeWidth={2.4} />}
                           </button>
                         </td>
 
                         {/* FG CODE CELL */}
-                        <td style={{ overflow: 'visible' }}>
+                        <td className="sticky-proj-td-fg" style={{ overflow: 'visible' }}>
                           <div className="editable-cell">
                             {editingFG === p.id ? (
                               <div className="inline-edit-wrap">
@@ -292,7 +321,15 @@ export default function Tracker({
                                   )}
                                 </span>
                                 {canEdit && (
-                                  <button className="edit-icon" onClick={() => handleStartEditFG(p)}>✏</button>
+                                  <button
+                                    type="button"
+                                    className="edit-icon edit-with-text"
+                                    onClick={() => handleStartEditFG(p)}
+                                    title="Edit FG Code"
+                                  >
+                                    <Edit2 size={9} />
+                                    <span>Edit</span>
+                                  </button>
                                 )}
                               </>
                             )}
@@ -300,8 +337,21 @@ export default function Tracker({
                         </td>
 
                         {/* PROJECT NAME */}
-                        <td style={{ fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.projectName}>
-                          {p.projectName}
+                        <td
+                          className="sticky-proj-td-name"
+                          style={{
+                            fontWeight: '600',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            cursor: onOpenProjectDrawer ? 'pointer' : 'default'
+                          }}
+                          title={`${p.projectName} — Click to open Project Detail Drawer`}
+                          onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(p)}
+                        >
+                          <span style={{ borderBottom: onOpenProjectDrawer ? '1px dashed rgba(0, 200, 215, 0.4)' : 'none' }}>
+                            {p.projectName}
+                          </span>
                           {recent && <span className="new-badge" style={{ marginLeft: '3px' }}>↑</span>}
                         </td>
 
@@ -353,28 +403,28 @@ export default function Tracker({
                           >
                             <span>{fmt(p.targetLaunchDate) || <span style={{ opacity: 0.35 }}>—</span>}</span>
                             {p.crunchPlan?.status === 'PENDING_STAGE1' && (
-                              <span style={{ fontSize: '9px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', background: '#f59e0b', color: '#000', border: '1px solid #d97706', boxShadow: '0 0 6px rgba(245, 158, 11, 0.4)' }}>
-                                ⚡ S1 APPROVE →
+                              <span style={{ fontSize: '9px', fontWeight: '600', padding: '2px 7px', borderRadius: 'var(--r-badge)', background: 'rgba(242, 184, 75, 0.14)', color: 'var(--warning)', border: '1px solid rgba(242, 184, 75, 0.3)' }}>
+                                S1 APPROVE →
                               </span>
                             )}
                             {p.crunchPlan?.status === 'PENDING_STAGE2' && (
-                              <span style={{ fontSize: '9px', fontWeight: '900', padding: '2px 6px', borderRadius: '4px', background: '#7c3aed', color: '#fff', border: '1px solid #6d28d9', boxShadow: '0 0 6px rgba(124, 58, 237, 0.4)' }}>
-                                ⚡ S2 SIGN-OFF →
+                              <span style={{ fontSize: '9px', fontWeight: '600', padding: '2px 7px', borderRadius: 'var(--r-badge)', background: 'rgba(139, 92, 246, 0.14)', color: 'var(--purple)', border: '1px solid rgba(139, 92, 246, 0.3)' }}>
+                                S2 SIGN-OFF →
                               </span>
                             )}
                             {p.crunchPlan?.status === 'APPROVED' && (
-                              <span style={{ fontSize: '8px', fontWeight: '800', padding: '1px 5px', borderRadius: '3px', background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
-                                ⚡ Crunched
+                              <span style={{ fontSize: '8.5px', fontWeight: '600', padding: '1px 6px', borderRadius: 'var(--r-badge)', background: 'rgba(56, 201, 138, 0.12)', color: 'var(--success)', border: '1px solid rgba(56, 201, 138, 0.25)' }}>
+                                Crunched
                               </span>
                             )}
                             {p.crunchPlan?.status === 'REJECTED' && (
-                              <span style={{ fontSize: '8px', fontWeight: '800', padding: '1px 5px', borderRadius: '3px', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
-                                ✕ Rejected
+                              <span style={{ fontSize: '8.5px', fontWeight: '600', padding: '1px 6px', borderRadius: 'var(--r-badge)', background: 'rgba(240, 93, 108, 0.12)', color: 'var(--danger)', border: '1px solid rgba(240, 93, 108, 0.25)' }}>
+                                Rejected
                               </span>
                             )}
                             {!p.crunchPlan && p.targetLaunchDate && p.milestones?.Connectivity && p.targetLaunchDate < p.milestones.Connectivity && (
-                              <span style={{ fontSize: '8px', fontWeight: '800', padding: '1px 5px', borderRadius: '3px', background: 'rgba(14, 165, 233, 0.2)', color: '#0ea5e9' }}>
-                                ⚡ Crunch
+                              <span style={{ fontSize: '8.5px', fontWeight: '600', padding: '1px 6px', borderRadius: 'var(--r-badge)', background: 'rgba(0, 200, 215, 0.12)', color: 'var(--teal)', border: '1px solid rgba(0, 200, 215, 0.25)' }}>
+                                Crunch
                               </span>
                             )}
                           </div>
@@ -430,7 +480,15 @@ export default function Tracker({
                                   🏭 {p.factory || 'TBD'}
                                 </span>
                                 {canEdit && (
-                                  <button className="edit-icon" onClick={() => handleStartEditFactory(p)} title="Edit Factory">✏</button>
+                                  <button
+                                    type="button"
+                                    className="edit-icon edit-with-text"
+                                    onClick={() => handleStartEditFactory(p)}
+                                    title="Edit Factory"
+                                  >
+                                    <Edit2 size={9} />
+                                    <span>Edit</span>
+                                  </button>
                                 )}
                               </>
                             )}
@@ -477,7 +535,15 @@ export default function Tracker({
                                   {p.description || p.comments || <span style={{ opacity: 0.35 }}>—</span>}
                                 </span>
                                 {canEdit && (
-                                  <button className="edit-icon" onClick={() => handleStartEditDesc(p)} title="Edit Description">✏</button>
+                                  <button
+                                    type="button"
+                                    className="edit-icon edit-with-text"
+                                    onClick={() => handleStartEditDesc(p)}
+                                    title="Edit Description"
+                                  >
+                                    <Edit2 size={9} />
+                                    <span>Edit</span>
+                                  </button>
                                 )}
                               </>
                             )}
@@ -488,62 +554,69 @@ export default function Tracker({
                         <td style={{ whiteSpace: 'nowrap', textAlign: 'center', padding: '10px 12px' }}>
                           <div className="tracker-action-group">
                             {isLaunched ? (
-                              <span className="live-status-pill">🚀 LIVE</span>
+                              <span className="live-status-pill">LIVE</span>
                             ) : canLaunch && isAdmin ? (
-                              <button className="tracker-act-btn tracker-act-launch" onClick={() => onOpenLaunchModal(p.id)} title="Mark Project as Launched">
-                                🚀 Launch
+                              <button type="button" className="tracker-act-btn tracker-act-launch" onClick={() => onOpenLaunchModal(p.id)} title="Mark Project as Launched">
+                                <Rocket size={12} strokeWidth={2} /> <span>Launch</span>
                               </button>
                             ) : canAdvance ? (
-                              <button className="tracker-act-btn tracker-act-advance" onClick={() => handleNextAll(p)} title="Advance All Materials to Next Stage">
-                                ▶ Next All
+                              <button type="button" className="tracker-act-btn tracker-act-advance" onClick={() => handleNextAll(p)} title="Advance All Materials to Next Stage">
+                                <Play size={11} strokeWidth={2.2} /> <span>Next All</span>
                               </button>
                             ) : null}
 
                             {/* CRUNCH APPROVAL QUICK ACTION BUTTON */}
                             {p.crunchPlan && p.crunchPlan.status === 'PENDING_STAGE1' && (
                               <button
+                                type="button"
                                 className="tracker-act-btn"
                                 style={{ background: 'rgba(242, 184, 75, 0.12)', color: 'var(--warning)', fontWeight: '600', border: '1px solid rgba(242, 184, 75, 0.35)', fontSize: '10.5px', padding: '0 8px' }}
                                 onClick={() => setSelectedCrunchProject(p)}
                                 title="Stage 1 Admin Approval Required — Click to Approve Timeline"
                               >
-                                ⚡ S1 Approve
+                                <Zap size={11} strokeWidth={2} /> <span>S1 Approve</span>
                               </button>
                             )}
                             {p.crunchPlan && p.crunchPlan.status === 'PENDING_STAGE2' && (
                               <button
+                                type="button"
                                 className="tracker-act-btn"
                                 style={{ background: 'rgba(139, 92, 246, 0.12)', color: 'var(--purple)', fontWeight: '600', border: '1px solid rgba(139, 92, 246, 0.35)', fontSize: '10.5px', padding: '0 8px' }}
                                 onClick={() => setSelectedCrunchProject(p)}
                                 title="Stage 2 Super Admin Sign-off Required — Click to Approve Timeline"
                               >
-                                ⚡ S2 Sign-off
+                                <Zap size={11} strokeWidth={2} /> <span>S2 Sign-off</span>
                               </button>
                             )}
 
                             {/* REVOKE (Admins & Super Admin only — Updaters cannot revoke) */}
                             {canRevoke && projStage !== 'Brief' && (
-                              <button className="tracker-act-btn tracker-act-revoke" onClick={() => onRevokeProject(p.id)} title="Revoke All Materials (Admin / Super Admin)">
-                                ↩
+                              <button type="button" className="tracker-act-btn tracker-act-revoke" onClick={() => onRevokeProject(p.id)} title="Revoke All Materials (Admin / Super Admin)">
+                                <RotateCcw size={12} strokeWidth={2} />
                               </button>
                             )}
 
                             {/* FULL EDIT (Admins & Super Admin only) */}
                             {canFullEdit && (
-                              <button className="tracker-act-btn tracker-act-edit" onClick={() => onOpenEditModal(p)} title="Edit Project">
-                                ✎ Edit
+                              <button type="button" className="tracker-act-btn tracker-act-edit" onClick={() => onOpenEditModal(p)} title="Edit Project">
+                                <Edit2 size={11} strokeWidth={2} /> <span>Edit</span>
                               </button>
                             )}
 
                             {/* DELETE (Super Admin only!) */}
                             {canDelete && (
-                              <button className="tracker-act-btn tracker-act-delete" onClick={() => onDeleteProject(p.id)} title="Delete Project (Super Admin only)">
-                                🗑
+                              <button type="button" className="tracker-act-btn tracker-act-delete" onClick={() => onDeleteProject(p.id)} title="Delete Project (Super Admin only)">
+                                <Trash2 size={12} strokeWidth={2} />
                               </button>
                             )}
 
-                            <button className="tracker-act-btn tracker-act-details" onClick={() => onOpenDetailModal(p, 'specs')} title="View Project Specs, Audit Trail & Insights">
-                              📋 Details
+                            <button
+                              type="button"
+                              className="tracker-act-btn tracker-act-details"
+                              onClick={() => onOpenProjectDrawer ? onOpenProjectDrawer(p) : onOpenDetailModal(p, 'specs')}
+                              title="Open Project Detail Drawer"
+                            >
+                              <PanelRight size={12} strokeWidth={2} /> <span>Drawer</span>
                             </button>
                           </div>
                         </td>
@@ -567,6 +640,7 @@ export default function Tracker({
                               onOpenSpecModal={onOpenSpecModal}
                               onOpenArtworkModal={onOpenArtworkModal}
                               onOpenCrunchModal={setSelectedCrunchProject}
+                              onOpenProjectDrawer={onOpenProjectDrawer}
                               onProjectUpdated={onProjectUpdated}
                               showToast={showToast}
                             />

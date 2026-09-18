@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Palette, FileText, Download, ZoomIn, ZoomOut, RotateCw, ExternalLink, Plus, RefreshCw, Trash2, Edit2, X } from 'lucide-react';
 import { getArtworkCode, fmt, STAGE_COLORS } from '../../utils';
 import { updateMaterialArtwork } from '../../api';
 
@@ -295,8 +296,8 @@ export default function ArtworkViewerModal({
           flexDirection: 'column',
           overflow: 'hidden',
           background: 'var(--bg-app)',
-          border: '1px solid rgba(236, 72, 153, 0.35)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(236, 72, 153, 0.15)'
+          border: '1px solid var(--border-color)',
+          boxShadow: 'var(--shadow-lg)'
         }}
       >
         {/* HEADER */}
@@ -306,7 +307,7 @@ export default function ArtworkViewerModal({
             flexShrink: 0,
             padding: '14px 22px',
             borderBottom: '1px solid var(--border-color)',
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'var(--bg-sidebar)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
@@ -317,32 +318,32 @@ export default function ArtworkViewerModal({
               style={{
                 width: '38px',
                 height: '38px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(0, 200, 215, 0.12)',
+                border: '1px solid rgba(0, 200, 215, 0.25)',
+                color: 'var(--teal)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                boxShadow: '0 4px 14px rgba(236, 72, 153, 0.3)'
+                justifyContent: 'center'
               }}
             >
-              🎨
+              <Palette size={18} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>
+                <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)' }}>
                   Artwork Reference
                 </span>
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    background: 'rgba(236, 72, 153, 0.18)',
-                    color: '#f472b6',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    background: 'rgba(0, 200, 215, 0.1)',
+                    color: 'var(--teal)',
                     padding: '2px 9px',
-                    borderRadius: '5px',
-                    border: '1px solid rgba(236, 72, 153, 0.4)'
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid rgba(0, 200, 215, 0.25)'
                   }}
                 >
                   {awCode}
@@ -351,12 +352,12 @@ export default function ArtworkViewerModal({
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: '11px',
-                    fontWeight: 700,
-                    background: 'rgba(2, 132, 199, 0.15)',
-                    color: 'var(--teal)',
+                    fontWeight: 600,
+                    background: 'var(--card-bg-subtle)',
+                    color: 'var(--text-secondary)',
                     padding: '2px 8px',
-                    borderRadius: '5px',
-                    border: '1px solid rgba(2, 132, 199, 0.35)'
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-color)'
                   }}
                 >
                   PM: {pmCode}
@@ -364,46 +365,46 @@ export default function ArtworkViewerModal({
                 <span
                   style={{
                     fontSize: '10px',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     padding: '2px 8px',
-                    borderRadius: '12px',
-                    background: `${stageColor}20`,
+                    borderRadius: 'var(--radius-badge)',
+                    background: `${stageColor}18`,
                     color: stageColor,
-                    border: `1px solid ${stageColor}45`
+                    border: `1px solid ${stageColor}40`
                   }}
                 >
                   Stage: {stage}
                 </span>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                <strong style={{ color: 'var(--text-dim)' }}>{material.name}</strong> ({material.type})
+                <strong style={{ color: 'var(--text-secondary)' }}>{material.name}</strong> ({material.type})
                 {project?.projectName ? ` · Project: ${project.projectName}` : ''}
-                {material.supplier ? ` · 🏭 ${material.supplier}` : ''}
+                {material.supplier ? ` · Supplier: ${material.supplier}` : ''}
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {files.length > 0 && activeFile && (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-secondary btn-sm"
                 onClick={handleDownload}
                 title="Download artwork file"
-                style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
-                ⬇ Download
+                <Download size={13} /> Download
               </button>
             )}
             {onOpenSpecModal && project && (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-secondary btn-sm"
                 onClick={() => { onClose(); onOpenSpecModal(project.id, mIdx); }}
                 title="Open full specification sheet"
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--teal)' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: 'var(--teal)' }}
               >
-                📋 View Spec
+                <FileText size={13} /> View Spec
               </button>
             )}
             <button
@@ -411,9 +412,9 @@ export default function ArtworkViewerModal({
               className="modal-close"
               onClick={onClose}
               title="Close viewer"
-              style={{ fontSize: '18px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              ✕
+              <X size={16} />
             </button>
           </div>
         </div>
@@ -423,7 +424,7 @@ export default function ArtworkViewerModal({
           <div
             style={{
               padding: '8px 20px',
-              background: 'rgba(6, 42, 48, 0.4)',
+              background: 'var(--card-bg-subtle)',
               borderBottom: '1px solid var(--border-color)',
               display: 'flex',
               justifyContent: 'space-between',
@@ -446,9 +447,9 @@ export default function ArtworkViewerModal({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      background: isActive ? '#ec4899' : 'rgba(255,255,255,0.06)',
-                      border: isActive ? '1px solid #f472b6' : '1px solid var(--border-color)',
-                      borderRadius: '5px',
+                      background: isActive ? 'var(--teal)' : 'var(--bg-app)',
+                      border: isActive ? '1px solid var(--teal)' : '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-sm)',
                       overflow: 'hidden',
                       flexShrink: 0
                     }}
@@ -459,20 +460,23 @@ export default function ArtworkViewerModal({
                       style={{
                         padding: '3px 7px',
                         fontSize: '10px',
-                        fontWeight: 700,
+                        fontWeight: 600,
                         cursor: 'pointer',
                         background: 'transparent',
-                        color: isActive ? '#ffffff' : 'var(--text-muted)',
+                        color: isActive ? '#071A1D' : 'var(--text-secondary)',
                         border: 'none',
                         maxWidth: '140px',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}
                       title={f.name}
                     >
-                      {isItemPdf ? '📄 ' : '🖼️ '}
-                      {i + 1}. {f.name}
+                      <FileText size={10} style={{ flexShrink: 0 }} />
+                      <span>{i + 1}. {f.name}</span>
                     </button>
                     <button
                       type="button"
@@ -484,7 +488,7 @@ export default function ArtworkViewerModal({
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: isActive ? 'rgba(255,255,255,0.8)' : '#ef4444',
+                        color: isActive ? 'rgba(7, 26, 29, 0.7)' : 'var(--danger)',
                         cursor: 'pointer',
                         padding: '2px 5px',
                         fontSize: '11px',
@@ -504,37 +508,37 @@ export default function ArtworkViewerModal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={handleZoomOut}
                     title="Zoom Out"
                     style={{ padding: '3px 8px', fontSize: '11px' }}
                   >
-                    🔍−
+                    <ZoomOut size={12} />
                   </button>
-                  <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', minWidth: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                  <span style={{ fontSize: '10.5px', fontFamily: 'var(--font-mono)', minWidth: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     {Math.round(zoom * 100)}%
                   </span>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={handleZoomIn}
                     title="Zoom In"
                     style={{ padding: '3px 8px', fontSize: '11px' }}
                   >
-                    🔍+
+                    <ZoomIn size={12} />
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={handleRotate}
                     title="Rotate 90°"
-                    style={{ padding: '3px 8px', fontSize: '11px' }}
+                    style={{ padding: '3px 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    ↻ Rotate
+                    <RotateCw size={12} /> Rotate
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={handleResetZoom}
                     title="Reset Zoom"
                     style={{ padding: '3px 8px', fontSize: '10px' }}
@@ -548,24 +552,24 @@ export default function ArtworkViewerModal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{
                     fontSize: '10px',
-                    fontWeight: 800,
-                    background: '#ef444420',
-                    color: '#ef4444',
-                    border: '1px solid #ef444450',
+                    fontWeight: 600,
+                    background: 'rgba(240, 93, 108, 0.1)',
+                    color: 'var(--danger)',
+                    border: '1px solid rgba(240, 93, 108, 0.25)',
                     padding: '2px 6px',
-                    borderRadius: '4px'
+                    borderRadius: 'var(--radius-sm)'
                   }}>
                     PDF Document
                   </span>
                   {activeFile?.url && (
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="btn btn-secondary btn-sm"
                       onClick={() => window.open(pdfBlobUrl || activeFile.url, '_blank')}
                       title="Open PDF in Full Tab"
-                      style={{ padding: '3px 8px', fontSize: '10.5px' }}
+                      style={{ padding: '3px 8px', fontSize: '10.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     >
-                      ↗ Full Window
+                      <ExternalLink size={11} /> Full Window
                     </button>
                   )}
                 </div>
@@ -575,46 +579,47 @@ export default function ArtworkViewerModal({
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  style={{ fontSize: '10.5px', color: '#f472b6', fontWeight: 700 }}
+                  style={{ fontSize: '10.5px', color: 'var(--teal)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   title="Upload additional artwork file"
                 >
-                  {isUploading ? '⏳ Uploading...' : '＋ Add Artwork'}
+                  <Plus size={11} />
+                  {isUploading ? 'Uploading...' : 'Add Artwork'}
                 </button>
 
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => replaceFileInputRef.current?.click()}
                   disabled={isUploading || !activeFile}
-                  style={{ fontSize: '10.5px', color: 'var(--teal)', fontWeight: 700 }}
+                  style={{ fontSize: '10.5px', color: 'var(--teal)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   title="Replace / Update the currently selected artwork file"
                 >
-                  🔄 Update Artwork
+                  <RefreshCw size={11} /> Update Artwork
                 </button>
 
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={handleRenameActiveFile}
                   disabled={isUploading || !activeFile}
-                  style={{ fontSize: '10.5px', color: 'var(--text-dim)' }}
+                  style={{ fontSize: '10.5px', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   title="Rename current file"
                 >
-                  ✏️ Rename
+                  <Edit2 size={11} /> Rename
                 </button>
 
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => handleDeleteFile(activeFileIdx)}
                   disabled={isUploading || !activeFile}
-                  style={{ fontSize: '10.5px', color: '#ef4444', fontWeight: 700 }}
+                  style={{ fontSize: '10.5px', color: 'var(--danger)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   title="Delete the currently selected artwork file"
                 >
-                  🗑️ Delete
+                  <Trash2 size={11} /> Delete
                 </button>
 
                 {/* Hidden input for Add Artwork */}
@@ -659,19 +664,21 @@ export default function ArtworkViewerModal({
                 textAlign: 'center',
                 padding: '50px 30px',
                 maxWidth: '480px',
-                border: '2px dashed rgba(236, 72, 153, 0.3)',
-                borderRadius: '12px',
-                background: 'rgba(236, 72, 153, 0.04)'
+                border: '1px dashed var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--card-bg-subtle)'
               }}
             >
-              <div style={{ fontSize: '50px', marginBottom: '14px' }}>🎨</div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                <Palette size={40} style={{ color: 'var(--teal)' }} />
+              </div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
                 No Artwork Uploaded Yet
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '20px' }}>
                 Each packaging material requires an approved artwork linked to PM Code{' '}
                 <strong style={{ color: 'var(--teal)' }}>{pmCode}</strong> with generated code{' '}
-                <strong style={{ color: '#f472b6' }}>{awCode}</strong>. Upload an image proof or vector PDF.
+                <strong style={{ color: 'var(--teal)' }}>{awCode}</strong>. Upload an image proof or vector PDF.
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
                 <button
@@ -679,17 +686,19 @@ export default function ArtworkViewerModal({
                   className="btn btn-primary"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', border: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  {isUploading ? '⏳ Uploading...' : '⬆ Upload Artwork (PDF / Image)'}
+                  <Plus size={13} />
+                  {isUploading ? 'Uploading...' : 'Upload Artwork (PDF / Image)'}
                 </button>
                 {onOpenSpecModal && project && (
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="btn btn-secondary"
                     onClick={() => { onClose(); onOpenSpecModal(project.id, mIdx); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
-                    Open Spec Sheet
+                    <FileText size={13} /> Open Spec Sheet
                   </button>
                 )}
                 <input
@@ -708,7 +717,7 @@ export default function ArtworkViewerModal({
               <div
                 style={{
                   padding: '8px 16px',
-                  background: 'rgba(15, 23, 42, 0.85)',
+                  background: 'var(--bg-sidebar)',
                   borderBottom: '1px solid var(--border-color)',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -719,54 +728,59 @@ export default function ArtworkViewerModal({
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{
-                    background: '#ef4444',
-                    color: '#ffffff',
-                    fontWeight: 800,
+                    background: 'rgba(240, 93, 108, 0.1)',
+                    color: 'var(--danger)',
+                    border: '1px solid rgba(240, 93, 108, 0.25)',
+                    fontWeight: 600,
                     fontSize: '10px',
                     padding: '2px 6px',
-                    borderRadius: '4px'
+                    borderRadius: 'var(--radius-sm)'
                   }}>
                     PDF PROOF
                   </span>
-                  <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{activeFile.name}</span>
+                  <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{activeFile.name}</span>
                   {activeFile.size ? (
-                    <span style={{ color: 'var(--text-dim)' }}>({(activeFile.size / 1024).toFixed(1)} KB)</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>({(activeFile.size / 1024).toFixed(1)} KB)</span>
                   ) : null}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => replaceFileInputRef.current?.click()}
-                    style={{ fontSize: '11px', color: 'var(--teal)' }}
+                    style={{ fontSize: '11px', color: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     title="Replace this PDF with an updated version"
                   >
-                    🔄 Update PDF
+                    <RefreshCw size={11} /> Update PDF
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => window.open(pdfBlobUrl || activeFile.url, '_blank')}
-                    style={{ fontSize: '11px' }}
+                    style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     title="Open PDF in a full browser window"
                   >
-                    ↗ Open Full Window
+                    <ExternalLink size={11} /> Open Full Window
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-secondary btn-sm"
                     onClick={handleDownload}
-                    style={{ fontSize: '11px' }}
+                    style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    ⬇ Download PDF
+                    <Download size={11} /> Download PDF
                   </button>
                 </div>
               </div>
 
               {activeFile.url ? (
-                <div style={{ flex: 1, width: '100%', minHeight: '520px', background: '#323639', position: 'relative' }}>
+                <div style={{ flex: 1, width: '100%', minHeight: '520px', background: '#1c2427', position: 'relative' }}>
                   <iframe
-                    src={pdfBlobUrl || activeFile.url}
+                    src={(() => {
+                      const u = pdfBlobUrl || activeFile.url;
+                      if (!u) return '';
+                      return u.includes('#') ? u : `${u}#page=1&view=FitH&toolbar=1`;
+                    })()}
                     title={activeFile.name || 'Artwork PDF Preview'}
                     style={{
                       width: '100%',
@@ -774,7 +788,7 @@ export default function ArtworkViewerModal({
                       minHeight: '540px',
                       border: 'none',
                       display: 'block',
-                      background: '#525659'
+                      background: '#1c2427'
                     }}
                   />
                 </div>
@@ -787,11 +801,13 @@ export default function ArtworkViewerModal({
                     margin: 'auto',
                     background: 'var(--card-bg)',
                     border: '1px solid var(--border-color)',
-                    borderRadius: '12px'
+                    borderRadius: 'var(--radius-lg)'
                   }}
                 >
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>📄</div>
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                    <FileText size={36} style={{ color: 'var(--teal)' }} />
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
                     PDF Preview Data Not Available
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.5 }}>
@@ -801,9 +817,9 @@ export default function ArtworkViewerModal({
                     type="button"
                     className="btn btn-primary btn-sm"
                     onClick={() => replaceFileInputRef.current?.click()}
-                    style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', border: 'none' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    🔄 Update / Re-upload PDF
+                    <RefreshCw size={11} /> Update / Re-upload PDF
                   </button>
                 </div>
               )}
@@ -816,8 +832,8 @@ export default function ArtworkViewerModal({
                 transition: 'transform 0.15s ease-out',
                 transform: `scale(${zoom}) rotate(${rotation}deg)`,
                 transformOrigin: 'center center',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                borderRadius: '8px',
+                boxShadow: 'var(--shadow-md)',
+                borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 background: '#ffffff'
               }}
@@ -842,15 +858,17 @@ export default function ArtworkViewerModal({
                 maxWidth: '460px',
                 background: 'var(--card-bg)',
                 border: '1px solid var(--border-color)',
-                borderRadius: '12px'
+                borderRadius: 'var(--radius-lg)'
               }}
             >
-              <div style={{ fontSize: '56px', marginBottom: '14px' }}>📄</div>
-              <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+                <FileText size={40} style={{ color: 'var(--teal)' }} />
+              </div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
                 {activeFile?.name || 'Artwork Document'}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '18px' }}>
-                Format: {activeFile?.type || 'Vector/Document'} &bull; Linked Code: <strong style={{ color: '#f472b6' }}>{awCode}</strong>
+                Format: {activeFile?.type || 'Vector/Document'} &bull; Linked Code: <strong style={{ color: 'var(--teal)' }}>{awCode}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
                 {activeFile?.url && (
@@ -858,26 +876,26 @@ export default function ArtworkViewerModal({
                     type="button"
                     className="btn btn-primary btn-sm"
                     onClick={handleDownload}
-                    style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', border: 'none' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                   >
-                    ⬇ Download Asset
+                    <Download size={11} /> Download Asset
                   </button>
                 )}
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => replaceFileInputRef.current?.click()}
-                  style={{ color: 'var(--teal)' }}
+                  style={{ color: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
-                  🔄 Update File
+                  <RefreshCw size={11} /> Update File
                 </button>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => handleDeleteFile(activeFileIdx)}
-                  style={{ color: '#ef4444' }}
+                  style={{ color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
-                  🗑️ Delete
+                  <Trash2 size={11} /> Delete
                 </button>
               </div>
             </div>
@@ -899,12 +917,12 @@ export default function ArtworkViewerModal({
         >
           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             {stage === 'VPDF' ? (
-              <span style={{ color: '#e040fb', fontWeight: 700 }}>
-                ⚡ Project is at VPDF stage — Approved Artwork {awCode} is active for Vendor PDF proofing.
+              <span style={{ color: 'var(--teal)', fontWeight: 600 }}>
+                Project is at VPDF stage — Approved Artwork {awCode} is active for Vendor PDF proofing.
               </span>
             ) : (
               <span>
-                Artwork code <strong style={{ color: '#f472b6' }}>{awCode}</strong> is derived from PM Code <strong style={{ color: 'var(--teal)' }}>{pmCode}</strong>.
+                Artwork code <strong style={{ color: 'var(--teal)' }}>{awCode}</strong> is derived from PM Code <strong style={{ color: 'var(--teal)' }}>{pmCode}</strong>.
               </span>
             )}
           </div>
@@ -912,15 +930,15 @@ export default function ArtworkViewerModal({
             {files.length > 0 && (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
+                className="btn btn-secondary btn-sm"
                 onClick={() => replaceFileInputRef.current?.click()}
                 disabled={isUploading}
-                style={{ color: 'var(--teal)', fontSize: '11px' }}
+                style={{ color: 'var(--teal)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
-                🔄 Update Artwork
+                <RefreshCw size={11} /> Update Artwork
               </button>
             )}
-            <button type="button" className="btn btn-ghost" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
               Close
             </button>
           </div>

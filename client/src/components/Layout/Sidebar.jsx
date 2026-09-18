@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ListTodo, Calendar, Map, Users, AlertTriangle, Package, Bell, FileText, Palette, Shield, Building } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Calendar, Map, Users, AlertTriangle, Package, Bell, FileText, Palette, Shield, Building, Settings, LogOut } from 'lucide-react';
 import { SHADOW_AVATAR } from '../../constants';
 
 export default function Sidebar({
@@ -10,6 +10,7 @@ export default function Sidebar({
   unreadCount = 0,
   logs,
   onOpenNotif,
+  onOpenActivityStream,
   onOpenUserDirectory,
   onOpenProfile,
   isMobileNavOpen = false,
@@ -122,9 +123,14 @@ export default function Sidebar({
               </button>
 
               <button
+                type="button"
                 className="sidebar-link"
-                onClick={() => { onOpenNotif(); if (onCloseMobile) onCloseMobile(); }}
-                title="Activity Logs & Event Stream"
+                onClick={() => {
+                  if (onOpenActivityStream) onOpenActivityStream();
+                  else onOpenNotif();
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                title="Live Activity Stream & Logs"
               >
                 <span className="link-icon-ring">
                   <Bell size={16} />
@@ -139,37 +145,44 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* BOTTOM USER AREA (COMPACT & PROFESSIONAL) */}
-      <div className="sidebar-user sidebar-user-compact">
-        <div className="sidebar-user-row">
-          <img
-            src={currentUser?.avatar || SHADOW_AVATAR}
-            alt={currentUser?.name || 'User'}
-            className="user-avatar"
-            onError={(e) => { e.target.src = SHADOW_AVATAR; }}
-          />
-          <div className="user-info">
-            <div className="user-name">{currentUser?.name || 'Alexsander'}</div>
-            <div className="user-role">
+      {/* BOTTOM USER AREA (PREMIUM EXECUTIVE) */}
+      <div className="sidebar-user sidebar-user-premium">
+        <div className="user-profile-header">
+          <div className="user-avatar-wrap">
+            <img
+              src={currentUser?.avatar || SHADOW_AVATAR}
+              alt={currentUser?.name || 'User'}
+              className="user-avatar user-avatar-premium"
+              onError={(e) => { e.target.src = SHADOW_AVATAR; }}
+            />
+            <span className="user-online-dot" title="Active session" />
+          </div>
+          <div className="user-info user-info-premium">
+            <div className="user-name user-name-premium">{currentUser?.name || 'Alexsander'}</div>
+            <div className="user-role user-role-badge">
               {roleLabels[currentUser?.role] || currentUser?.role || 'Super Admin'}
             </div>
           </div>
         </div>
-        <div className="user-actions">
+
+        <div className="user-actions-bar">
           <button
-            className="user-action-link"
+            type="button"
+            className="user-btn user-btn-settings"
             onClick={() => { onOpenProfile(); if (onCloseMobile) onCloseMobile(); }}
             title="Account Settings"
           >
-            Settings
+            <Settings size={12} className="user-btn-icon" />
+            <span>Settings</span>
           </button>
-          <span className="user-action-sep">·</span>
           <button
-            className="user-action-link"
+            type="button"
+            className="user-btn user-btn-logout"
             onClick={onLogout}
-            title="Sign Out"
+            title="Sign Out of Session"
           >
-            Sign Out
+            <LogOut size={12} className="user-btn-icon" />
+            <span>Sign Out</span>
           </button>
         </div>
       </div>

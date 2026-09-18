@@ -126,7 +126,7 @@ export default function SpecSignoffModal({
                 <span style={{ fontSize: '20px' }}>{isSigned ? '✅' : '⏳'}</span>
                 <div>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: isSigned ? '#34d399' : '#fbbf24' }}>
-                    {isSigned ? 'Specifications Confirmed & Signed Off' : 'Pending Technical Spec Sign-Off'}
+                    {isSigned ? 'Specifications Confirmed & Signed' : 'Pending Technical Spec Signed'}
                   </div>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                     {isSigned 
@@ -143,7 +143,7 @@ export default function SpecSignoffModal({
                   disabled={loading}
                   style={{ fontSize: '10px', color: '#f87171', padding: '3px 8px', border: '1px solid rgba(239,68,68,0.3)' }}
                 >
-                  ↩ Revoke Sign-Off
+                  ↩ Revoke Signed Spec
                 </button>
               )}
             </div>
@@ -338,7 +338,7 @@ export default function SpecSignoffModal({
                 gap: '6px'
               }}
             >
-              {loading ? 'Confirming...' : '✅ Confirm Spec Sign-off'}
+              {loading ? 'Confirming...' : '✅ Confirm Spec as Signed'}
             </button>
           )}
         </div>

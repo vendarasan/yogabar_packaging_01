@@ -88,7 +88,7 @@ router.post('/library', authMiddleware, requireUpdater, async (req, res) => {
       return res.status(400).json({ error: 'specName and specData are required.' });
     }
 
-    const id = 'SPEC-LIB-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+    const id = 'SPEC-LIB-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
     const newRecord = {
       id,
@@ -132,10 +132,15 @@ router.post('/library', authMiddleware, requireUpdater, async (req, res) => {
         if (specData.docHeader?.artworkCode) {
           p.materials[materialIdx].artworkCode = specData.docHeader.artworkCode;
         }
+        if (Array.isArray(specData.artworkFiles) && specData.artworkFiles.length > 0) {
+          p.materials[materialIdx].artworkFiles = specData.artworkFiles;
+        } else if (Array.isArray(p.materials[materialIdx].artworkFiles) && p.materials[materialIdx].artworkFiles.length > 0) {
+          specData.artworkFiles = p.materials[materialIdx].artworkFiles;
+        }
 
         // Project audit logging
         const logEntry = {
-          id: 'LOG-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          id: 'LOG-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
           projectId: p.id,
           projectName: p.projectName,
           fgCode: p.fgCode || '',
@@ -265,10 +270,15 @@ router.post('/library/:id/apply', authMiddleware, requireUpdater, async (req, re
     if (mat.specSheet.docHeader?.artworkCode) {
       mat.artworkCode = mat.specSheet.docHeader.artworkCode;
     }
+    if (Array.isArray(mat.specSheet.artworkFiles) && mat.specSheet.artworkFiles.length > 0) {
+      mat.artworkFiles = mat.specSheet.artworkFiles;
+    } else if (Array.isArray(mat.artworkFiles) && mat.artworkFiles.length > 0) {
+      mat.specSheet.artworkFiles = mat.artworkFiles;
+    }
 
     // Log Activity
     const logEntry = {
-      id: 'LOG-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      id: 'LOG-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       projectId: p.id,
       projectName: p.projectName,
       fgCode: p.fgCode || '',
@@ -289,6 +299,10 @@ router.post('/library/:id/apply', authMiddleware, requireUpdater, async (req, re
 
     store.advanceLogs = store.advanceLogs || [];
     store.advanceLogs.unshift(logEntry);
+
+    if (typeof store.saveLocalStore === 'function') {
+      store.saveLocalStore();
+    }
 
     LogsRepo.add(logEntry).catch(() => {});
     ProjectsRepo.update(p.id, p).catch(() => {});

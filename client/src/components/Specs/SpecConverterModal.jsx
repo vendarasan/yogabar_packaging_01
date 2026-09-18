@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   FileText, Upload, Sparkles, CheckCircle2, ArrowRight, Eye, Download,
-  ExternalLink, Trash2, Plus, RefreshCw, X, AlertCircle, Layers, ShieldCheck, Box
+  ExternalLink, Trash2, Plus, RefreshCw, X, AlertCircle, Layers, ShieldCheck, Box,
+  Maximize2, Minimize2
 } from 'lucide-react';
 import { convertSpecPdf, saveSpecToLibrary } from '../../api';
 
@@ -46,6 +47,44 @@ export default function SpecConverterModal({
   const [extractedRawText, setExtractedRawText] = useState(null);
   const [pastedText, setPastedText] = useState('');
   const [mobileSplitView, setMobileSplitView] = useState('spec'); // 'spec' | 'pdf' on mobile screens
+
+  // Resizable split pane & PDF view controls
+  const [splitRatio, setSplitRatio] = useState(54); // % for PDF pane (default 54%)
+  const [isMaximizedPdf, setIsMaximizedPdf] = useState(false);
+  const [pdfFitMode, setPdfFitMode] = useState('FitH'); // 'FitH' (Fit Width) | 'Fit' (Fit Page)
+  const [isDragging, setIsDragging] = useState(false);
+  const splitContainerRef = useRef(null);
+
+  // Drag handler for resizable split pane
+  const handleMouseDownSplitter = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e) => {
+      if (!splitContainerRef.current) return;
+      const containerRect = splitContainerRef.current.getBoundingClientRect();
+      const relativeX = e.clientX - containerRect.left;
+      const newRatio = (relativeX / containerRect.width) * 100;
+      // Clamp between 25% and 80%
+      const clampedRatio = Math.max(25, Math.min(80, newRatio));
+      setSplitRatio(clampedRatio);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // Target Destination
   const [destinationMode, setDestinationMode] = useState(initialProjectId ? 'project' : 'library'); // 'library' | 'project'
@@ -259,6 +298,9 @@ export default function SpecConverterModal({
     setSummary(null);
     setConversionStep(1);
     setPastedText('');
+    setIsMaximizedPdf(false);
+    setSplitRatio(54);
+    setPdfFitMode('FitH');
   };
 
   return (
@@ -277,22 +319,22 @@ export default function SpecConverterModal({
       padding: '16px'
     }}>
       <div style={{
-        background: 'var(--bg-dark, #041c20)',
-        border: '1px solid var(--border-color, rgba(0, 243, 255, 0.25))',
-        borderRadius: '12px',
+        background: 'var(--card-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-lg)',
         width: '98vw',
-        maxWidth: '1440px',
-        height: '92vh',
+        maxWidth: '1680px',
+        height: '95vh',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.8), 0 0 40px rgba(0, 243, 255, 0.1)',
+        boxShadow: 'var(--shadow-lg)',
         overflow: 'hidden'
       }}>
         {/* ── Modal Header ── */}
         <div style={{
           padding: '14px 20px',
-          borderBottom: '1px solid var(--border-color, rgba(0, 243, 255, 0.2))',
-          background: 'linear-gradient(90deg, rgba(6, 42, 48, 0.95), rgba(4, 28, 32, 0.95))',
+          borderBottom: '1px solid var(--border-color)',
+          background: 'var(--bg-sidebar)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -303,33 +345,33 @@ export default function SpecConverterModal({
             <div style={{
               width: '34px',
               height: '34px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #0ea5e9, #00d4c8)',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(0, 200, 215, 0.12)',
+              border: '1px solid rgba(0, 200, 215, 0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#041c20',
-              boxShadow: '0 0 15px rgba(0, 243, 255, 0.4)'
+              color: 'var(--teal)'
             }}>
               <Sparkles size={18} />
             </div>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main, #ffffff)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Packaging Spec Converter</span>
                 <span style={{
                   fontSize: '9.5px',
-                  fontWeight: 800,
+                  fontWeight: 600,
                   textTransform: 'uppercase',
                   padding: '2px 7px',
-                  borderRadius: '12px',
-                  background: 'rgba(0, 243, 255, 0.15)',
-                  color: 'var(--teal, #00f3ff)',
-                  border: '1px solid rgba(0, 243, 255, 0.3)'
+                  borderRadius: 'var(--radius-badge)',
+                  background: 'rgba(0, 200, 215, 0.1)',
+                  color: 'var(--teal)',
+                  border: '1px solid rgba(0, 200, 215, 0.25)'
                 }}>
                   PDF to New Standard Format
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Upload an existing or legacy specification PDF — extracts all technical parameters intact into the Spec Library
               </div>
             </div>
@@ -512,22 +554,22 @@ export default function SpecConverterModal({
                 <div style={{
                   marginTop: '28px',
                   padding: '12px 16px',
-                  background: 'rgba(255,255,255,0.03)',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--card-bg-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   fontSize: '11px',
-                  color: 'var(--text-muted)'
+                  color: 'var(--text-secondary)'
                 }}>
-                  <span style={{ fontWeight: 700 }}>Supported Categories:</span>
-                  <span>📦 Corrugated Shipper (CBB)</span>
-                  <span>🫙 PET Jar & Cap</span>
-                  <span>🏷️ Roll Label</span>
-                  <span>🎞️ Laminate Film</span>
-                  <span>👝 Pouch</span>
-                  <span>📦 Monocarton</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Supported Categories:</span>
+                  <span>Corrugated Shipper (CBB)</span>
+                  <span>PET Jar &amp; Cap</span>
+                  <span>Roll Label</span>
+                  <span>Laminate Film</span>
+                  <span>Pouch</span>
+                  <span>Monocarton</span>
                 </div>
               </div>
             </div>
@@ -594,91 +636,229 @@ export default function SpecConverterModal({
                 </button>
               </div>
 
-              <div className="converter-split-container" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+              <div
+                ref={splitContainerRef}
+                className="converter-split-container"
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  overflow: 'hidden',
+                  userSelect: isDragging ? 'none' : 'auto'
+                }}
+              >
                 {/* LEFT COLUMN: Original PDF Viewer */}
-                <div className={`converter-pane-pdf ${mobileSplitView === 'pdf' ? 'mobile-active' : ''}`} style={{
-                  width: '48%',
-                  borderRight: '1px solid var(--border-color)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  background: 'rgba(0, 0, 0, 0.25)'
-                }}>
-                {/* PDF Sub-header */}
-                <div style={{
-                  padding: '10px 16px',
-                  background: 'rgba(6, 42, 48, 0.6)',
-                  borderBottom: '1px solid var(--border-color)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '11px',
-                  color: 'var(--text-muted)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                    <FileText size={14} style={{ color: 'var(--teal)' }} />
-                    <span style={{ fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {file?.name || 'Original Specification PDF'}
-                    </span>
-                    {file?.size && (
-                      <span style={{ opacity: 0.7 }}>({(file.size / 1024).toFixed(0)} KB)</span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {blobUrl && (
-                      <a
-                        href={blobUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-outline btn-sm"
-                        style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        title="Open original PDF in full browser tab"
-                      >
-                        <ExternalLink size={12} />
-                        <span>Pop out</span>
-                      </a>
-                    )}
-                    {blobUrl && (
-                      <a
-                        href={blobUrl}
-                        download={file?.name || 'original_spec.pdf'}
-                        className="btn btn-outline btn-sm"
-                        style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        title="Download PDF"
-                      >
-                        <Download size={12} />
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Embedded PDF iframe / Object */}
-                <div style={{ flex: 1, position: 'relative', background: '#262626' }}>
-                  {blobUrl ? (
-                    <iframe
-                      src={blobUrl}
-                      title="Original Specification PDF"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        border: 'none',
-                        display: 'block'
-                      }}
-                    />
-                  ) : (
-                    <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                      <p>Raw text mode converted (No PDF view available)</p>
+                <div
+                  className={`converter-pane-pdf ${mobileSplitView === 'pdf' ? 'mobile-active' : ''}`}
+                  style={{
+                    width: isMaximizedPdf ? '100%' : `${splitRatio}%`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    transition: isDragging ? 'none' : 'width 0.15s ease'
+                  }}
+                >
+                  {/* PDF Sub-header */}
+                  <div style={{
+                    padding: '8px 14px',
+                    background: 'rgba(6, 42, 48, 0.75)',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    gap: '10px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: '1 1 auto' }}>
+                      <FileText size={14} style={{ color: 'var(--teal)', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file?.name}>
+                        {file?.name || 'Original Specification PDF'}
+                      </span>
+                      {file?.size && (
+                        <span style={{ opacity: 0.7, flexShrink: 0 }}>({(file.size / 1024).toFixed(0)} KB)</span>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      {/* Fit Mode Toggle */}
+                      <div style={{
+                        display: 'inline-flex',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        background: 'rgba(0,0,0,0.3)'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => setPdfFitMode('FitH')}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '10px',
+                            fontWeight: pdfFitMode === 'FitH' ? 700 : 500,
+                            background: pdfFitMode === 'FitH' ? 'var(--teal)' : 'transparent',
+                            color: pdfFitMode === 'FitH' ? '#000' : 'var(--text-muted)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s'
+                          }}
+                          title="Fit Page Width (shows entire document width without clipping)"
+                        >
+                          Fit Width
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPdfFitMode('Fit')}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '10px',
+                            fontWeight: pdfFitMode === 'Fit' ? 700 : 500,
+                            background: pdfFitMode === 'Fit' ? 'var(--teal)' : 'transparent',
+                            color: pdfFitMode === 'Fit' ? '#000' : 'var(--text-muted)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s'
+                          }}
+                          title="Fit Entire Page"
+                        >
+                          Fit Page
+                        </button>
+                      </div>
 
-              {/* RIGHT COLUMN: Converted Spec (Standard Format) */}
-              <div className={`converter-pane-spec ${mobileSplitView === 'spec' ? 'mobile-active' : ''}`} style={{
-                width: '52%',
-                display: 'flex',
-                flexDirection: 'column',
-                background: 'var(--bg-sidebar, #062a30)'
-              }}>
+                      {/* Split Ratio Presets */}
+                      {!isMaximizedPdf && (
+                        <div style={{
+                          display: 'inline-flex',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          background: 'rgba(0,0,0,0.3)'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => setSplitRatio(50)}
+                            style={{
+                              padding: '3px 7px',
+                              fontSize: '10px',
+                              fontWeight: Math.round(splitRatio) === 50 ? 700 : 500,
+                              background: Math.round(splitRatio) === 50 ? 'rgba(0,243,255,0.25)' : 'transparent',
+                              color: Math.round(splitRatio) === 50 ? 'var(--teal)' : 'var(--text-muted)',
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
+                            title="Split 50:50 view"
+                          >
+                            50:50
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSplitRatio(68)}
+                            style={{
+                              padding: '3px 7px',
+                              fontSize: '10px',
+                              fontWeight: Math.round(splitRatio) === 68 ? 700 : 500,
+                              background: Math.round(splitRatio) === 68 ? 'rgba(0,243,255,0.25)' : 'transparent',
+                              color: Math.round(splitRatio) === 68 ? 'var(--teal)' : 'var(--text-muted)',
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
+                            title="Wide PDF view (68% width)"
+                          >
+                            Wide PDF
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Maximize PDF toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setIsMaximizedPdf(!isMaximizedPdf)}
+                        className="btn btn-outline btn-sm"
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          color: isMaximizedPdf ? 'var(--teal)' : undefined,
+                          borderColor: isMaximizedPdf ? 'var(--teal)' : undefined
+                        }}
+                        title={isMaximizedPdf ? 'Restore split view' : 'Maximize PDF preview to 100% width'}
+                      >
+                        {isMaximizedPdf ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                        <span>{isMaximizedPdf ? 'Restore Split' : 'Maximize'}</span>
+                      </button>
+
+                      {blobUrl && (
+                        <a
+                          href={blobUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-outline btn-sm"
+                          style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Open original PDF in full browser tab"
+                        >
+                          <ExternalLink size={12} />
+                          <span>Pop out</span>
+                        </a>
+                      )}
+                      {blobUrl && (
+                        <a
+                          href={blobUrl}
+                          download={file?.name || 'original_spec.pdf'}
+                          className="btn btn-outline btn-sm"
+                          style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          title="Download PDF"
+                        >
+                          <Download size={12} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Embedded PDF iframe / Object */}
+                  <div style={{ flex: 1, position: 'relative', background: '#262626', overflow: 'hidden' }}>
+                    {blobUrl ? (
+                      <iframe
+                        key={`${blobUrl}_${pdfFitMode}`}
+                        src={`${blobUrl}#page=1&view=${pdfFitMode}&toolbar=1&navpanes=0`}
+                        title="Original Specification PDF"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: 'none',
+                          display: 'block',
+                          pointerEvents: isDragging ? 'none' : 'auto'
+                        }}
+                      />
+                    ) : (
+                      <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                        <p>Raw text mode converted (No PDF view available)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Draggable Divider (Desktop only) */}
+                {!isMaximizedPdf && (
+                  <div
+                    className={`converter-split-divider ${isDragging ? 'is-dragging' : ''}`}
+                    onMouseDown={handleMouseDownSplitter}
+                    title="Drag to resize PDF and Converted Spec panels"
+                  />
+                )}
+
+                {/* RIGHT COLUMN: Converted Spec (Standard Format) */}
+                <div
+                  className={`converter-pane-spec ${mobileSplitView === 'spec' ? 'mobile-active' : ''}`}
+                  style={{
+                    width: isMaximizedPdf ? '0%' : `${100 - splitRatio}%`,
+                    display: isMaximizedPdf ? 'none' : 'flex',
+                    flexDirection: 'column',
+                    background: 'var(--bg-sidebar, #062a30)',
+                    transition: isDragging ? 'none' : 'width 0.15s ease'
+                  }}
+                >
                 {/* Converted Sub-header & Tabs */}
                 <div style={{
                   padding: '10px 16px',

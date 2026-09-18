@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Zap, Lock, Rocket, Calendar, BarChart2, CheckCircle2, XCircle } from 'lucide-react';
 import { STAGE_COLORS } from '../../constants';
 import { fmt } from '../../utils';
 import { calculateCrunchedTimeline } from '../../crunchUtils';
@@ -119,7 +120,7 @@ export default function CrunchTimelineModal({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '16px', marginBottom: '20px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '20px' }}>⚡</span>
+              <Zap size={20} color="var(--teal)" />
               <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: 'var(--white)' }}>
                 Crunched Launch Timeline &amp; Reverse Calculation
               </h2>
@@ -161,7 +162,7 @@ export default function CrunchTimelineModal({
               color: '#fca5a5'
             }}
           >
-            <span style={{ fontSize: '22px' }}>🔒</span>
+            <Lock size={20} color="var(--danger)" style={{ flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#f87171' }}>
                 Progression Gated — Action Paused
@@ -224,8 +225,8 @@ export default function CrunchTimelineModal({
 
         {/* Target Launch Date Input & Adjuster */}
         <div style={{ background: 'rgba(2, 132, 199, 0.07)', border: '1px solid rgba(2, 132, 199, 0.25)', borderRadius: '8px', padding: '14px 16px', marginBottom: '24px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--cyan)', marginBottom: '8px' }}>
-            📅 Adjust Target Launch Timeline (Feeds Reverse Calculation)
+          <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--cyan)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={14} color="var(--teal)" /> Adjust Target Launch Timeline (Feeds Reverse Calculation)
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
@@ -239,9 +240,9 @@ export default function CrunchTimelineModal({
               className="btn btn-primary btn-sm"
               onClick={handleProposeDate}
               disabled={isSubmitting || customDate === project.targetLaunchDate}
-              style={{ fontSize: '11px', padding: '7px 14px' }}
+              style={{ fontSize: '11px', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              {isSubmitting ? 'Calculating...' : '⚡ Submit Crunch Proposal'}
+              <Zap size={13} /> {isSubmitting ? 'Calculating...' : 'Submit Crunch Proposal'}
             </button>
             <span style={{ fontSize: '11px', color: 'var(--white-dim)' }}>
               Standard Est. Ready is {fmt(project.milestones?.Connectivity)}. Setting an earlier date reverse calculates compression.
@@ -252,8 +253,8 @@ export default function CrunchTimelineModal({
         {/* Reverse Timeline Breakdown Table */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--white)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              📊 Reverse Stage Calculation &amp; Risk Factor Analysis
+            <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--white)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <BarChart2 size={14} color="var(--teal)" /> Reverse Stage Calculation &amp; Risk Factor Analysis
             </div>
             {activePlan?.isExcessive && (
               <span style={{ fontSize: '10.5px', color: '#ef4444', fontWeight: '700', background: 'rgba(239, 68, 68, 0.15)', padding: '2px 8px', borderRadius: '4px' }}>
@@ -493,9 +494,9 @@ export default function CrunchTimelineModal({
                           className="btn btn-primary btn-sm"
                           onClick={handleApproveStage2}
                           disabled={isSubmitting}
-                          style={{ fontSize: '11px', flex: 1, justifyContent: 'center', background: '#7c3aed', borderColor: '#7c3aed' }}
+                          style={{ fontSize: '11px', flex: 1, justifyContent: 'center', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                         >
-                          🚀 Final Sign-Off (Super Admin)
+                          <Rocket size={14} /> Final Sign-Off (Super Admin)
                         </button>
                         <button
                           className="btn btn-ghost btn-sm"
@@ -534,7 +535,7 @@ export default function CrunchTimelineModal({
                 style={{ fontSize: '11px', width: '100%', marginBottom: '8px' }}
               />
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn btn-primary btn-sm" onClick={handleReject} disabled={isSubmitting} style={{ background: '#ef4444', borderColor: '#ef4444', fontSize: '11px' }}>
+                <button className="btn btn-danger btn-sm" onClick={handleReject} disabled={isSubmitting} style={{ fontSize: '11px' }}>
                   Confirm Rejection
                 </button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setShowRejectBox(false)} style={{ fontSize: '11px' }}>

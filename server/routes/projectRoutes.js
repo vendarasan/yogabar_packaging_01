@@ -18,7 +18,7 @@ function logActivity(p, entry, user) {
   const dateFormatted = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
   const logEntry = {
-    id: 'LOG-' + ts + '-' + Math.random().toString(36).substr(2, 4),
+    id: 'LOG-' + ts + '-' + Math.random().toString(36).substring(2, 6),
     projectId: p.id,
     projectName: p.projectName,
     fgCode: p.fgCode || '',
@@ -86,7 +86,7 @@ router.use('/:id', (req, res, next) => {
           if (req.method === 'DELETE') {
             ProjectsRepo.delete(id).catch(err => console.warn('[ProjectsRepo] DB delete failed:', err.message));
           } else {
-            const p = store.projects.find(x => x.id === id);
+            const p = store.projects.find(x => String(x.id) === String(id));
             if (p) {
               ProjectsRepo.update(id, p).catch(err => console.warn('[ProjectsRepo] DB update failed:', err.message));
             }
@@ -114,9 +114,26 @@ router.get('/', authMiddleware, async (req, res) => {
   return res.json({ projects: store.projects || [] });
 });
 
+// GET /api/projects/:id — Get single project by ID (Authenticated users)
+router.get('/:id', authMiddleware, async (req, res) => {
+  let p = store.projects.find(x => String(x.id) === String(req.params.id));
+  if (!p && isDbAvailable()) {
+    try {
+      p = await ProjectsRepo.getById(req.params.id);
+      if (p) {
+        const existingIdx = store.projects.findIndex(x => String(x.id) === String(p.id));
+        if (existingIdx !== -1) store.projects[existingIdx] = p;
+        else store.projects.push(p);
+      }
+    } catch (e) {}
+  }
+  if (!p) return res.status(404).json({ error: 'Project not found' });
+  res.json({ project: p });
+});
+
 // GET /api/projects/:id/audit-trail — Backtrack project history (Authenticated users)
 router.get('/:id/audit-trail', authMiddleware, async (req, res) => {
-  let p = store.projects.find(x => x.id === req.params.id);
+  let p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) {
     try {
       p = await ProjectsRepo.getById(req.params.id);
@@ -222,12 +239,16 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
     console.warn('[ProjectsRepo] DB create failed:', err.message);
   }
 
+  if (typeof store.saveLocalStore === 'function') {
+    store.saveLocalStore();
+  }
+
   res.status(201).json({ project });
 });
 
 // PUT /api/projects/:id — Full Update (Admin & Super Admin only)
 router.put('/:id', authMiddleware, requireAdmin, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Project not found' });
   const { fgCode, projectName, skuSize, grammage, briefDate, targetLaunchDate, status, risk, supplier, factory, description, comments, projectType, projectCategory, materials } = req.body;
   const existingMats = p.materials;
@@ -272,7 +293,7 @@ router.put('/:id', authMiddleware, requireAdmin, (req, res) => {
   p.description = description !== undefined ? description : (comments !== undefined ? comments : p.description);
   if (materials && materials.length) {
     p.materials = materials.map((m, i) => {
-      const ex = existingMats ? existingMats[i] : null;
+      const ex = existingMats ? (existingMats.find(em => (m.id && em.id === m.id) || (m.pmCode && em.pmCode === m.pmCode) || (m.name && em.name === m.name)) || existingMats[i]) : null;
       // Determine material brief date:
       // If m.briefDate was explicitly provided, use it.
       // If project brief date changed, cascade the new project brief date to the material!
@@ -332,8 +353,8 @@ router.put('/:id', authMiddleware, requireAdmin, (req, res) => {
 });
 
 // DELETE /api/projects/:id — Delete (Super Admin only!)
-router.delete('/:id', authMiddleware, requireSuperAdmin, (req, res) => {
-  const idx = store.projects.findIndex(x => x.id === req.params.id);
+router.delete('/:id', authMiddleware, requireSuperAdmin, async (req, res) => {
+  const idx = store.projects.findIndex(x => String(x.id) === String(req.params.id));
   if (idx === -1) return res.status(404).json({ error: 'Project not found' });
   const p = store.projects[idx];
   logActivity(p, {
@@ -342,12 +363,22 @@ router.delete('/:id', authMiddleware, requireSuperAdmin, (req, res) => {
     details: `Permanently deleted project '${p.projectName}' (${p.id})`
   }, req.user);
   store.projects.splice(idx, 1);
+  if (typeof store.saveLocalStore === 'function') {
+    store.saveLocalStore();
+  }
+  if (isDbAvailable()) {
+    try {
+      await ProjectsRepo.delete(req.params.id);
+    } catch (err) {
+      console.warn('[ProjectsRepo] DB delete failed:', err.message);
+    }
+  }
   res.json({ ok: true });
 });
 
 // PUT /api/projects/:id/fgcode — Inline FG code edit (Updaters, Admins, Super Admin)
 router.put('/:id/fgcode', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const oldVal = p.fgCode || '';
   p.fgCode = (req.body.fgCode || '').trim();
@@ -366,7 +397,7 @@ router.put('/:id/fgcode', authMiddleware, requireUpdater, (req, res) => {
 
 // PUT /api/projects/:id/supplier — Inline supplier edit (Updaters, Admins, Super Admin)
 router.put('/:id/supplier', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const oldVal = p.supplier || 'TBD';
   p.supplier = (req.body.supplier || '').trim() || 'TBD';
@@ -385,7 +416,7 @@ router.put('/:id/supplier', authMiddleware, requireUpdater, (req, res) => {
 
 // PUT /api/projects/:id/factory — Inline factory edit (Updaters, Admins, Super Admin)
 router.put('/:id/factory', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const oldVal = p.factory || 'TBD';
   p.factory = (req.body.factory || '').trim() || 'TBD';
@@ -404,7 +435,7 @@ router.put('/:id/factory', authMiddleware, requireUpdater, (req, res) => {
 
 // PUT /api/projects/:id/description — Inline description edit (Updaters, Admins, Super Admin)
 router.put('/:id/description', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   p.description = (req.body.description || '').trim();
   p.comments = p.description;
@@ -422,7 +453,7 @@ router.put('/:id/description', authMiddleware, requireUpdater, (req, res) => {
 
 // POST /api/projects/:id/advance — Advance all materials at min stage (Updaters, Admins, Super Admin)
 router.post('/:id/advance', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p || p.status === 'Launched') return res.status(400).json({ error: 'Cannot advance' });
 
   // Mandatory check: If crunched timeline is pending Stage 1 or Stage 2 approval, next action is gated!
@@ -488,7 +519,7 @@ router.post('/:id/advance', authMiddleware, requireUpdater, (req, res) => {
 
 // POST /api/projects/:id/revoke — Revoke all materials to previous stage (admin)
 router.post('/:id/revoke', authMiddleware, requireAdmin, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const projStage = p.stage;
   if (projStage === 'Brief') return res.status(400).json({ error: 'Already at first stage' });
@@ -515,7 +546,7 @@ router.post('/:id/revoke', authMiddleware, requireAdmin, (req, res) => {
 router.post('/:id/launch', authMiddleware, requireAdmin, (req, res) => {
   const { date } = req.body;
   if (!date) return res.status(400).json({ error: 'date required' });
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   p.stage = 'Launch';
   p.status = 'Launched';
@@ -539,7 +570,7 @@ router.post('/:id/launch', authMiddleware, requireAdmin, (req, res) => {
 router.post('/:id/brief-date', authMiddleware, requireAdmin, (req, res) => {
   const { briefDate } = req.body;
   if (!briefDate) return res.status(400).json({ error: 'briefDate required' });
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p || p.status === 'Launched') return res.status(400).json({ error: 'Cannot change' });
   const oldBD = p.briefDate;
   p.briefDate = briefDate;
@@ -569,7 +600,7 @@ router.post('/:id/brief-date', authMiddleware, requireAdmin, (req, res) => {
 
 // POST /api/projects/:id/materials/:mIdx/advance — Advance single material (Updaters, Admins, Super Admin)
 router.post('/:id/materials/:mIdx/advance', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p || p.status === 'Launched') return res.status(400).json({ error: 'Cannot advance' });
 
   // Mandatory check: If crunched timeline is pending Stage 1 or Stage 2 approval, next action is gated!
@@ -647,7 +678,7 @@ router.post('/:id/materials/:mIdx/advance', authMiddleware, requireUpdater, (req
 
 // POST /api/projects/:id/materials/:mIdx/revoke — Revoke single material (Admin & Super Admin only)
 router.post('/:id/materials/:mIdx/revoke', authMiddleware, requireAdmin, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -680,7 +711,7 @@ router.post('/:id/materials/:mIdx/revoke', authMiddleware, requireAdmin, (req, r
 
 // PUT /api/projects/:id/materials/:mIdx/specs — Save material specs (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/specs', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -744,8 +775,10 @@ router.put('/:id/materials/:mIdx/specsheet', authMiddleware, requireUpdater, (re
   if (Array.isArray(specSheet.variants)) {
     m.variants = specSheet.variants;
   }
-  if (Array.isArray(specSheet.artworkFiles)) {
+  if (Array.isArray(specSheet.artworkFiles) && specSheet.artworkFiles.length > 0) {
     m.artworkFiles = specSheet.artworkFiles;
+  } else if (Array.isArray(m.artworkFiles) && m.artworkFiles.length > 0) {
+    specSheet.artworkFiles = m.artworkFiles;
   }
 
   // Sync flat m.specs for backwards compatibility
@@ -791,6 +824,13 @@ router.put('/:id/materials/:mIdx/artwork', authMiddleware, requireUpdater, (req,
     m.specSheet.artworkFiles = artworkFiles;
     if (m.variants) {
       m.specSheet.variants = m.variants;
+    } else if (Array.isArray(m.specSheet.variants)) {
+      m.specSheet.variants = m.specSheet.variants.map(v => {
+        if (!Array.isArray(v.artworkFiles) || v.artworkFiles.length === 0) {
+          return { ...v, artworkFiles };
+        }
+        return v;
+      });
     }
     if (m.specSheet.docHeader) {
       m.specSheet.docHeader.artworkCode = m.artworkCode;
@@ -919,7 +959,7 @@ router.post('/:id/materials/:mIdx/specsheet/reject', authMiddleware, requireAdmi
 
 // PUT /api/projects/:id/materials/:mIdx/pmcode — Save material PM code (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/pmcode', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -942,7 +982,7 @@ router.put('/:id/materials/:mIdx/pmcode', authMiddleware, requireUpdater, (req, 
 
 // PUT /api/projects/:id/materials/:mIdx/supplier — Save material supplier (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/supplier', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -965,7 +1005,7 @@ router.put('/:id/materials/:mIdx/supplier', authMiddleware, requireUpdater, (req
 
 // PUT /api/projects/:id/materials/:mIdx/printtype — Update material print type and recalc milestones (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/printtype', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -991,7 +1031,7 @@ router.put('/:id/materials/:mIdx/printtype', authMiddleware, requireUpdater, (re
 
 // PUT /api/projects/:id/materials/:mIdx/brief-date — Update material brief date and recalc milestones (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/brief-date', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Project not found' });
   if (p.status === 'Launched') return res.status(400).json({ error: 'Project is already launched' });
   const mIdx = parseInt(req.params.mIdx);
@@ -1038,7 +1078,7 @@ router.put('/:id/materials/:mIdx/brief-date', authMiddleware, requireUpdater, (r
 
 // PUT /api/projects/:id/materials/:mIdx/po — Update material Purchase Order action & details (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/po', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -1092,7 +1132,7 @@ router.put('/:id/materials/:mIdx/po', authMiddleware, requireUpdater, (req, res)
 
 // PUT /api/projects/:id/materials/:mIdx/specsignoff — Confirm or revoke material technical specifications sign-off (Updaters, Admins, Super Admin)
 router.put('/:id/materials/:mIdx/specsignoff', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Not found' });
   const mIdx = parseInt(req.params.mIdx);
   const m = p.materials[mIdx];
@@ -1141,7 +1181,7 @@ router.put('/:id/materials/:mIdx/specsignoff', authMiddleware, requireUpdater, (
 
 // POST /api/projects/:id/crunch/propose — Propose or update crunched launch timeline (Updaters, Admins, Super Admin)
 router.post('/:id/crunch/propose', authMiddleware, requireUpdater, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Project not found' });
   const { targetLaunchDate } = req.body;
   if (!targetLaunchDate) return res.status(400).json({ error: 'targetLaunchDate is required' });
@@ -1177,7 +1217,7 @@ router.post('/:id/crunch/propose', authMiddleware, requireUpdater, (req, res) =>
 
 // POST /api/projects/:id/crunch/approve-stage1 — Stage 1 Admin Approval (Either Admin 1 or Admin 2)
 router.post('/:id/crunch/approve-stage1', authMiddleware, requireAdmin, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Project not found' });
   if (!p.crunchPlan) return res.status(400).json({ error: 'No crunched timeline proposal on this project' });
   if (p.crunchPlan.status !== 'PENDING_STAGE1') {
@@ -1207,7 +1247,7 @@ router.post('/:id/crunch/approve-stage1', authMiddleware, requireAdmin, (req, re
 
 // POST /api/projects/:id/crunch/approve-stage2 — Stage 2 Super Admin Approval (Super Admin only!)
 router.post('/:id/crunch/approve-stage2', authMiddleware, requireSuperAdmin, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Project not found' });
   if (!p.crunchPlan) return res.status(400).json({ error: 'No crunched timeline proposal on this project' });
   if (p.crunchPlan.status !== 'PENDING_STAGE2') {
@@ -1251,7 +1291,7 @@ router.post('/:id/crunch/approve-stage2', authMiddleware, requireSuperAdmin, (re
 
 // POST /api/projects/:id/crunch/reject — Reject crunched timeline (Admin & Super Admin)
 router.post('/:id/crunch/reject', authMiddleware, requireAdmin, (req, res) => {
-  const p = store.projects.find(x => x.id === req.params.id);
+  const p = store.projects.find(x => String(x.id) === String(req.params.id));
   if (!p) return res.status(404).json({ error: 'Project not found' });
   if (!p.crunchPlan) return res.status(400).json({ error: 'No crunched timeline proposal on this project' });
 

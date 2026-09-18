@@ -1,5 +1,5 @@
-import { STAGE_ORDER, STAGE_COLORS, STAGE_PCT, PRINT_LEAD, getMaterialLeadTime } from './constants';
-export * from './constants';
+import { STAGE_ORDER, STAGE_COLORS, STAGE_PCT, PRINT_LEAD, getMaterialLeadTime } from './constants.js';
+export * from './constants.js';
 
 export function today() { return new Date().toISOString().split('T')[0]; }
 export function addDays(ds, n) { const d = new Date(ds); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; }
@@ -114,51 +114,51 @@ export function getArtworkFiles(material) {
 export const STATUS_CONFIG = {
   APPROVED: {
     label: 'Approved',
-    color: '#10b981',
-    bg: 'rgba(16, 185, 129, 0.12)',
-    border: 'rgba(16, 185, 129, 0.45)',
+    color: '#38C98A',
+    bg: 'rgba(56, 201, 138, 0.12)',
+    border: 'rgba(56, 201, 138, 0.3)',
     icon: '✓',
-    dot: '#10b981'
+    dot: '#38C98A'
   },
   CHECKED_PENDING_APPROVAL: {
     label: 'Checked — Awaiting Approval',
-    color: '#c084fc',
-    bg: 'rgba(168, 85, 247, 0.12)',
-    border: 'rgba(168, 85, 247, 0.45)',
-    icon: '🛡',
-    dot: '#a855f7'
+    color: '#4F8CFF',
+    bg: 'rgba(79, 140, 255, 0.12)',
+    border: 'rgba(79, 140, 255, 0.3)',
+    icon: '✓',
+    dot: '#4F8CFF'
   },
   PENDING_CHECK: {
     label: 'Submitted — Awaiting PM Check',
-    color: '#fbbf24',
-    bg: 'rgba(245, 158, 11, 0.12)',
-    border: 'rgba(245, 158, 11, 0.45)',
+    color: '#F2B84B',
+    bg: 'rgba(242, 184, 75, 0.12)',
+    border: 'rgba(242, 184, 75, 0.3)',
     icon: '⏳',
-    dot: '#f59e0b'
+    dot: '#F2B84B'
   },
   REVISION_REQUESTED: {
     label: 'Revision Requested',
-    color: '#f87171',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.45)',
-    icon: '⚠',
-    dot: '#ef4444'
+    color: '#F05D6C',
+    bg: 'rgba(240, 93, 108, 0.12)',
+    border: 'rgba(240, 93, 108, 0.3)',
+    icon: '!',
+    dot: '#F05D6C'
   },
   DRAFT: {
     label: 'Draft',
-    color: '#94a3b8',
-    bg: 'rgba(148, 163, 184, 0.12)',
-    border: 'rgba(148, 163, 184, 0.35)',
-    icon: '📝',
-    dot: '#94a3b8'
+    color: '#8FA8AA',
+    bg: 'rgba(143, 168, 170, 0.1)',
+    border: 'rgba(143, 168, 170, 0.25)',
+    icon: '•',
+    dot: '#8FA8AA'
   },
   NO_SPEC: {
     label: 'No Spec Sheet Yet',
-    color: '#64748b',
-    bg: 'rgba(100, 116, 139, 0.08)',
-    border: 'rgba(100, 116, 139, 0.25)',
+    color: '#607C80',
+    bg: 'rgba(96, 124, 128, 0.08)',
+    border: 'rgba(96, 124, 128, 0.2)',
     icon: '—',
-    dot: '#475569'
+    dot: '#607C80'
   }
 };
 
@@ -167,4 +167,142 @@ export function getSpecStatus(material) {
   if (!material.specSheet || typeof material.specSheet !== 'object' || !material.specSheet.docHeader) return 'NO_SPEC';
   return material.specSheet.governance?.status || 'DRAFT';
 }
+
+/**
+ * Deterministically derives the next logical action for a stage / material / project
+ * strictly based on existing workflow gates and status data (Pass 3 Section 8).
+ */
+export function getNextAction(stage, mat, project) {
+  if (project?.status === 'Launched' || stage === 'Launch') {
+    return 'Project Live in Market';
+  }
+  if (project?.crunchPlan && (project.crunchPlan.status === 'PENDING_STAGE1' || project.crunchPlan.status === 'PENDING_STAGE2')) {
+    return project.crunchPlan.status === 'PENDING_STAGE1' ? 'Approve Crunched Timeline (Stage 1)' : 'Sign-Off Crunched Timeline (Stage 2)';
+  }
+  if (mat?.poStatus && stage === 'VPDF' && mat.poStatus !== 'Raised') {
+    return 'Raise Purchase Order for Printing';
+  }
+  if (mat && !(mat.specSignoff?.signed) && stage !== 'Brief') {
+    return 'Confirm Technical Spec Sign-Off';
+  }
+  switch (stage) {
+    case 'Brief':
+      return 'Complete Brief & Initiate Sampling';
+    case 'Sample':
+      return 'Complete Sample Validation';
+    case 'Trial':
+      return 'Schedule & Conduct Line Trial';
+    case 'KLD':
+      return 'Finalize & Approve KLD';
+    case 'Artwork':
+      return mat && hasArtwork(mat) ? 'Review Artwork Proof' : 'Upload & Approve Artwork';
+    case 'VPDF':
+      return 'Approve VPDF & Confirm PO';
+    case 'Printing':
+      return 'Release Printing & Quality Inspection';
+    case 'Dispatch':
+      return 'Confirm Dispatch & Transit Tracking';
+    case 'Connectivity':
+      return 'Complete Connectivity & Batch Code';
+    default:
+      return 'Advance to Next Stage';
+  }
+}
+
+/* ─── Safe Variant Artwork Resolver ──────────────────────────────────────── */
+export function resolveVariantArtworkFiles(variantObj, parentArtworkFiles = [], material = {}, specSheet = {}) {
+  let files = Array.isArray(variantObj?.artworkFiles) && variantObj.artworkFiles.length > 0
+    ? variantObj.artworkFiles
+    : [];
+
+  if (variantObj?.hasRemovedArtwork && files.length === 0) {
+    return [];
+  }
+
+  if (files.length === 0 && (variantObj?.artworkUrl || variantObj?.artwork)) {
+    const artUrl = variantObj.artworkUrl || variantObj.artwork;
+    const vName = variantObj?.variantName || variantObj?.name || 'Variant';
+    files = [{ name: `${vName} Artwork`, url: artUrl, type: 'image/png' }];
+  }
+
+  if (files.length === 0 && Array.isArray(parentArtworkFiles) && parentArtworkFiles.length > 0) {
+    files = parentArtworkFiles;
+  }
+
+  if (files.length === 0 && Array.isArray(specSheet?.artworkFiles) && specSheet.artworkFiles.length > 0) {
+    files = specSheet.artworkFiles;
+  }
+
+  if (files.length === 0 && Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0) {
+    files = material.artworkFiles;
+  }
+
+  if (files.length === 0 && Array.isArray(material?.specSheet?.artworkFiles) && material.specSheet.artworkFiles.length > 0) {
+    files = material.specSheet.artworkFiles;
+  }
+
+  if (files.length === 0 && (material?.artworkUrl || material?.artwork)) {
+    const matName = material.name || variantObj?.variantName || 'Material';
+    files = [{ name: `${matName} Artwork`, url: material.artworkUrl || material.artwork, type: 'image/png' }];
+  }
+
+  return (files || [])
+    .filter(Boolean)
+    .map(f => typeof f === 'string' ? { name: `${variantObj?.variantName || material?.name || 'Material'} Artwork`, url: f, type: 'image/png' } : f);
+}
+
+/* ─── Safe Variant Normalizer ───────────────────────────────────────────── */
+export function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwCode, defaultNetWeight, defaultArtworkFiles = []) {
+  const safeDefaultFiles = (Array.isArray(defaultArtworkFiles) ? defaultArtworkFiles : (defaultArtworkFiles ? [defaultArtworkFiles] : []))
+    .filter(Boolean)
+    .map(f => typeof f === 'string' ? { name: `${defaultName || 'Standard SKU'} Artwork`, url: f, type: 'image/png' } : f);
+
+  if (!Array.isArray(rawVariants) || rawVariants.length === 0) {
+    return [{
+      id: 'var-1',
+      variantName: defaultName || 'Standard SKU',
+      name: defaultName || 'Standard SKU',
+      itemCode: defaultItemCode || 'PM-TBD',
+      code: defaultItemCode || 'PM-TBD',
+      artworkCode: defaultAwCode || getArtworkCode(defaultItemCode),
+      artworkFiles: safeDefaultFiles,
+      pantoneColors: ['CMYK', 'Gold'],
+      dimensions: 'Standard Dimensions',
+      barcode: '',
+      netWeight: defaultNetWeight || 'Standard',
+      notes: ''
+    }];
+  }
+
+  return rawVariants.map((v, idx) => {
+    const vName = v.variantName || v.name || `Variant ${idx + 1}`;
+    const vCode = v.itemCode || v.code || defaultItemCode || 'PM-TBD';
+    const vAwCode = v.artworkCode || (v.code ? getArtworkCode(v.code) : '') || getArtworkCode(vCode);
+    let files = Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0 ? v.artworkFiles : [];
+    if (files.length === 0 && (v.artworkUrl || v.artwork)) {
+      files = [{ name: `${vName} Artwork`, url: v.artworkUrl || v.artwork, type: 'image/png' }];
+    }
+    if (files.length === 0 && safeDefaultFiles.length > 0) {
+      files = safeDefaultFiles;
+    }
+    files = files.map(f => typeof f === 'string' ? { name: `${vName} Artwork`, url: f, type: 'image/png' } : f);
+
+    return {
+      id: v.id || `var-${idx + 1}`,
+      variantName: vName,
+      name: vName,
+      itemCode: vCode,
+      code: vCode,
+      artworkCode: vAwCode,
+      artworkFiles: files,
+      pantoneColors: Array.isArray(v.pantoneColors) && v.pantoneColors.length > 0 ? v.pantoneColors : ['CMYK'],
+      dimensions: v.dimensions || 'Standard Dimensions',
+      barcode: v.barcode || '',
+      netWeight: v.netWeight || defaultNetWeight || 'Standard',
+      notes: v.notes || ''
+    };
+  });
+}
+
+
 

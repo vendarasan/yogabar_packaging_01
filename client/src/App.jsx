@@ -27,6 +27,8 @@ import SpecModal from './components/Tracker/SpecModal';
 import ArtworkViewerModal from './components/Modals/ArtworkViewerModal';
 import UserDirectoryModal from './components/UserManagement/UserDirectoryModal';
 import ProfileModal from './components/Modals/ProfileModal';
+import ProjectDetailDrawer from './components/Modals/ProjectDetailDrawer';
+import ActivityStreamModal from './components/Modals/ActivityStreamModal';
 
 import { fmt, getProjectStage } from './utils';
 
@@ -111,6 +113,8 @@ export default function App() {
   const [detailModalState, setDetailModalState] = useState({ isOpen: false, project: null, initialTab: 'specs' });
   const [specModalData, setSpecModalData] = useState(null);
   const [artworkViewerState, setArtworkViewerState] = useState({ isOpen: false, project: null, material: null, mIdx: null });
+  const [drawerState, setDrawerState] = useState({ isOpen: false, project: null, materialIndex: null });
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
 
   const showToast = (msg, err = false) => {
     setToast({ msg, err });
@@ -325,6 +329,20 @@ export default function App() {
         material: updatedProject.materials[prev.mIdx] || prev.material
       }));
     }
+    if (drawerState.isOpen && drawerState.project?.id === updatedProject.id) {
+      setDrawerState(prev => ({
+        ...prev,
+        project: updatedProject
+      }));
+    }
+  };
+
+  const handleOpenProjectDrawer = (project, matIndex = null) => {
+    setDrawerState({
+      isOpen: true,
+      project,
+      materialIndex: matIndex !== null ? matIndex : 0
+    });
   };
 
   const exportCSV = () => {
@@ -387,7 +405,11 @@ export default function App() {
         unreadCount={unreadCount}
         logs={logs}
         onOpenNotif={() => {
-          setActiveTab('tracker');
+          setIsActivityModalOpen(true);
+          setIsMobileNavOpen(false);
+        }}
+        onOpenActivityStream={() => {
+          setIsActivityModalOpen(true);
           setIsMobileNavOpen(false);
         }}
         onOpenUserDirectory={() => {
@@ -411,6 +433,7 @@ export default function App() {
           onLogsMarkedSeen={(ts) => setSeenAt(ts)}
           exportCSV={exportCSV}
           onToggleMobileNav={() => setIsMobileNavOpen(!isMobileNavOpen)}
+          onOpenActivityStream={() => setIsActivityModalOpen(true)}
         />
 
         <div className="page-container">
@@ -418,12 +441,15 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <Dashboard
                 projects={projects}
+                logs={logs}
                 onFilterStage={handleFilterStage}
                 onSwitchToTracker={() => setActiveTab('tracker')}
                 onOpenAddModal={() => openAddProjectPage(null)}
+                onOpenProjectDrawer={handleOpenProjectDrawer}
                 canCreate={['admin', 'superadmin'].includes(currentUser.role)}
                 canEdit={['updater', 'editor', 'admin', 'superadmin'].includes(currentUser.role)}
                 onNavigate={setActiveTab}
+                exportCSV={exportCSV}
               />
             )}
 
@@ -445,6 +471,7 @@ export default function App() {
                 onOpenLaunchModal={(pid) => setLaunchModalState({ isOpen: true, project: projects.find(x => x.id === pid) })}
                 onOpenBriefModal={(pid) => setBriefModalState({ isOpen: true, project: projects.find(x => x.id === pid) })}
                 onOpenDetailModal={(p, tab = 'specs') => setDetailModalState({ isOpen: true, project: p, initialTab: tab })}
+                onOpenProjectDrawer={handleOpenProjectDrawer}
                 onAdvanceMaterial={handleAdvanceMaterial}
                 onRevokeMaterial={handleRevokeMaterial}
                 onOpenSpecModal={handleOpenSpecModal}
@@ -557,6 +584,37 @@ export default function App() {
           onUserUpdated={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
         />
       )}
+
+      <ProjectDetailDrawer
+        isOpen={drawerState.isOpen}
+        project={drawerState.project}
+        materialIndex={drawerState.materialIndex}
+        currentUser={currentUser}
+        onClose={() => setDrawerState({ isOpen: false, project: null, materialIndex: null })}
+        onOpenSpecModal={handleOpenSpecModal}
+        onOpenArtworkModal={handleOpenArtworkModal}
+        onOpenCrunchModal={(p) => {
+          // If needed
+        }}
+        onNavigateTab={(tab) => {
+          setActiveTab(tab);
+          setDrawerState({ isOpen: false, project: null, materialIndex: null });
+        }}
+        onOpenNotif={() => {
+          setActiveTab('tracker');
+          setDrawerState({ isOpen: false, project: null, materialIndex: null });
+        }}
+        showToast={showToast}
+      />
+
+      {/* LIVE ACTIVITY STREAM POPUP WINDOW */}
+      <ActivityStreamModal
+        isOpen={isActivityModalOpen}
+        onClose={() => setIsActivityModalOpen(false)}
+        logs={logs}
+        seenAt={seenAt}
+        onLogsMarkedSeen={(ts) => setSeenAt(ts)}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Calendar } from 'lucide-react';
 import { STAGE_ORDER, STAGE_COLORS, fmt, getProjectStage } from '../../utils';
 
 export default function Gantt({ projects }) {
@@ -6,7 +7,7 @@ export default function Gantt({ projects }) {
     return (
       <div id="gantt" className="panel active">
         <div className="empty-state">
-          <div className="empty-icon">📅</div>
+          <div className="empty-icon"><Calendar size={36} color="var(--text-muted)" /></div>
           <div className="empty-title">No projects to show on Gantt chart</div>
         </div>
       </div>
@@ -24,7 +25,9 @@ export default function Gantt({ projects }) {
     <div id="gantt" className="panel active">
       <div className="table-wrapper">
         <div className="table-header">
-          <div className="table-title">📅 Project Timeline (Gantt Chart)</div>
+          <div className="table-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={16} color="var(--teal)" /> Project Timeline (Gantt Chart)
+          </div>
           <div style={{ fontSize: '11px', color: 'var(--white-dim)' }}>Stage progress across 12-week horizon</div>
         </div>
         <div className="gantt-wrap" style={{ padding: '16px' }}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { STD_RISKS } from '../../constants';
 
 export default function Risks() {
@@ -6,7 +7,9 @@ export default function Risks() {
     <div id="risks" className="panel active">
       <div className="table-wrapper">
         <div className="table-header">
-          <div className="table-title">⚠️ Risk Register — Standard Packaging Risks &amp; Mitigations</div>
+          <div className="table-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={16} color="var(--amber)" /> Risk Register — Standard Packaging Risks &amp; Mitigations
+          </div>
           <div style={{ fontSize: '11px', color: 'var(--white-dim)' }}>Pre-identified risk scenarios for FMCG packaging projects</div>
         </div>
         <div className="modern-mat-table-wrap" style={{ margin: '16px' }}>

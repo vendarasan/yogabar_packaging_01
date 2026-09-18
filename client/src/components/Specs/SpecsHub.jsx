@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, Trash2, ExternalLink, FileText, Layers, Plus, RefreshCw } from 'lucide-react';
+import { Sparkles, Trash2, ExternalLink, FileText, Layers, Plus, RefreshCw, Palette, Eye } from 'lucide-react';
 import { fmt, getArtworkCode, hasArtwork, STATUS_CONFIG, getSpecStatus } from '../../utils';
 import { getSpecLibrary, deleteSpecFromLibrary } from '../../api';
 import SpecConverterModal from './SpecConverterModal';
@@ -14,8 +14,8 @@ export function StatusBadge({ statusKey }) {
       display: 'inline-flex', alignItems: 'center', gap: '5px',
       background: cfg.bg, color: cfg.color,
       border: `1px solid ${cfg.border}`,
-      padding: '3px 9px', borderRadius: '20px',
-      fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap'
+      padding: '2px 8px', borderRadius: 'var(--radius-badge)',
+      fontSize: '10px', fontWeight: 600, whiteSpace: 'nowrap'
     }}>
       <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: cfg.dot, display: 'inline-block', flexShrink: 0 }} />
       {cfg.label}
@@ -59,7 +59,7 @@ function MaterialSpecCard({
         <html>
           <head><title>${material.sourcePdfName || 'Original Specification PDF'}</title></head>
           <body style="margin:0;background:#1e1e1e;">
-            <iframe src="${material.sourcePdfData}" style="width:100%;height:100vh;border:none;"></iframe>
+            <iframe src="${material.sourcePdfData?.includes('#') ? material.sourcePdfData : `${material.sourcePdfData}#page=1&view=FitH&toolbar=1`}" style="width:100%;height:100vh;border:none;"></iframe>
           </body>
         </html>
       `);
@@ -234,19 +234,23 @@ function MaterialSpecCard({
             <button
               onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, material, mIdx)}
               style={{
-                background: artworkReady ? 'rgba(236, 72, 153, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                color: artworkReady ? '#f472b6' : '#fbbf24',
-                border: `1px solid ${artworkReady ? 'rgba(236, 72, 153, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
-                borderRadius: '6px',
+                background: 'var(--card-bg-subtle)',
+                color: artworkReady ? 'var(--teal)' : 'var(--warning)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
                 padding: '5px 10px',
                 fontSize: '10px',
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: 'pointer',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
               title={artworkReady ? 'View Artwork' : 'Upload Artwork'}
             >
-              🎨 {artworkReady ? 'Artwork' : '+ Upload AW'}
+              <Palette size={11} />
+              <span>{artworkReady ? 'Artwork' : '+ Upload AW'}</span>
             </button>
           )}
 
@@ -260,33 +264,50 @@ function MaterialSpecCard({
             }}
             style={{
               background: statusKey === 'NO_SPEC'
-                ? 'linear-gradient(135deg, #0284c7, #4f46e5)'
+                ? 'var(--teal)'
                 : statusKey === 'APPROVED'
-                ? 'rgba(16,185,129,0.15)'
-                : 'rgba(0,243,255,0.15)',
+                ? 'rgba(56, 201, 138, 0.1)'
+                : 'rgba(0, 200, 215, 0.08)',
               color: statusKey === 'NO_SPEC'
-                ? '#ffffff'
+                ? '#071A1D'
                 : statusKey === 'APPROVED'
-                ? '#34d399'
+                ? 'var(--success)'
                 : 'var(--teal)',
               border: `1px solid ${statusKey === 'NO_SPEC'
-                ? 'transparent'
+                ? 'var(--teal)'
                 : statusKey === 'APPROVED'
-                ? 'rgba(16,185,129,0.4)'
-                : 'rgba(0,243,255,0.4)'}`,
-              borderRadius: '6px',
+                ? 'rgba(56, 201, 138, 0.25)'
+                : 'rgba(255, 255, 255, 0.08)'}`,
+              borderRadius: 'var(--radius-sm)',
               padding: '5px 12px',
               fontSize: '10.5px',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               transition: 'all 0.15s',
-              boxShadow: statusKey === 'NO_SPEC' ? '0 2px 8px rgba(2,132,199,0.3)' : 'none'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
             onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
             onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1.0)'}
           >
-            {statusKey === 'NO_SPEC' ? '+ Create Spec' : statusKey === 'APPROVED' ? '👁 View Spec' : '📋 Open Spec'}
+            {statusKey === 'NO_SPEC' ? (
+              <>
+                <Plus size={11} />
+                <span>Create Spec</span>
+              </>
+            ) : statusKey === 'APPROVED' ? (
+              <>
+                <Eye size={11} />
+                <span>View Spec</span>
+              </>
+            ) : (
+              <>
+                <FileText size={11} />
+                <span>Open Spec</span>
+              </>
+            )}
           </button>
 
           {isLibraryMaster && canEdit && (
@@ -391,6 +412,11 @@ export default function SpecsHub({
             pmCode: item.itemCode,
             artworkCode: item.specData?.docHeader?.artworkCode,
             specSheet: item.specData,
+            artworkFiles: (Array.isArray(item.artworkFiles) && item.artworkFiles.length > 0)
+              ? item.artworkFiles
+              : (Array.isArray(item.specData?.artworkFiles) && item.specData.artworkFiles.length > 0)
+              ? item.specData.artworkFiles
+              : [],
             sourcePdfName: item.sourcePdfName,
             sourcePdfData: item.sourcePdfData,
             libId: item.id
@@ -922,7 +948,7 @@ export default function SpecsHub({
                                   <button
                                     onClick={() => {
                                       const w = window.open('');
-                                      if (w) w.document.write(`<iframe src="${material.sourcePdfData}" style="width:100%;height:100vh;border:none;"></iframe>`);
+                                      if (w) w.document.write(`<iframe src="${material.sourcePdfData?.includes('#') ? material.sourcePdfData : `${material.sourcePdfData}#page=1&view=FitH&toolbar=1`}" style="width:100%;height:100vh;border:none;"></iframe>`);
                                     }}
                                     style={{
                                       background: 'rgba(255,255,255,0.08)',

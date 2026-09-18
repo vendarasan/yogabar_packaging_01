@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Edit2, Eye, Save, Send, CheckCircle2, ShieldCheck, Printer, Download, Sparkles, Plus, Trash2, X, FileText, Check } from 'lucide-react';
 import { getDefaultSpecSheet, generateDefaultPMCode, getArtworkCode, getMaterialSpecCategory } from '../../specTemplates';
 import { saveSpecSheet, checkSpecSheet, approveSpecSheet, rejectSpecSheet, updateSpecInLibrary } from '../../api';
 import SpecConverterModal from '../Specs/SpecConverterModal';
@@ -58,8 +59,54 @@ function getColorsArray(raw) {
   return [];
 }
 
+/* ─── Safe Variant Artwork Resolver ──────────────────────────────────────── */
+function resolveVariantArtworkFiles(variantObj, parentArtworkFiles = [], material = {}, specSheet = {}) {
+  let files = Array.isArray(variantObj?.artworkFiles) && variantObj.artworkFiles.length > 0
+    ? variantObj.artworkFiles
+    : [];
+
+  if (variantObj?.hasRemovedArtwork && files.length === 0) {
+    return [];
+  }
+
+  if (files.length === 0 && (variantObj?.artworkUrl || variantObj?.artwork)) {
+    const artUrl = variantObj.artworkUrl || variantObj.artwork;
+    const vName = variantObj?.variantName || variantObj?.name || 'Variant';
+    files = [{ name: `${vName} Artwork`, url: artUrl, type: 'image/png' }];
+  }
+
+  if (files.length === 0 && Array.isArray(parentArtworkFiles) && parentArtworkFiles.length > 0) {
+    files = parentArtworkFiles;
+  }
+
+  if (files.length === 0 && Array.isArray(specSheet?.artworkFiles) && specSheet.artworkFiles.length > 0) {
+    files = specSheet.artworkFiles;
+  }
+
+  if (files.length === 0 && Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0) {
+    files = material.artworkFiles;
+  }
+
+  if (files.length === 0 && Array.isArray(material?.specSheet?.artworkFiles) && material.specSheet.artworkFiles.length > 0) {
+    files = material.specSheet.artworkFiles;
+  }
+
+  if (files.length === 0 && (material?.artworkUrl || material?.artwork)) {
+    const matName = material.name || variantObj?.variantName || 'Material';
+    files = [{ name: `${matName} Artwork`, url: material.artworkUrl || material.artwork, type: 'image/png' }];
+  }
+
+  return (files || [])
+    .filter(Boolean)
+    .map(f => typeof f === 'string' ? { name: `${variantObj?.variantName || material?.name || 'Material'} Artwork`, url: f, type: 'image/png' } : f);
+}
+
 /* ─── Safe Variant Normalizer ───────────────────────────────────────────── */
 function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwCode, defaultNetWeight, defaultArtworkFiles = []) {
+  const safeDefaultFiles = (Array.isArray(defaultArtworkFiles) ? defaultArtworkFiles : (defaultArtworkFiles ? [defaultArtworkFiles] : []))
+    .filter(Boolean)
+    .map(f => typeof f === 'string' ? { name: `${defaultName || 'Standard SKU'} Artwork`, url: f, type: 'image/png' } : f);
+
   if (!Array.isArray(rawVariants) || rawVariants.length === 0) {
     return [{
       id: 'var-1',
@@ -68,7 +115,7 @@ function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwC
       itemCode: defaultItemCode || 'PM-TBD',
       code: defaultItemCode || 'PM-TBD',
       artworkCode: defaultAwCode || getArtworkCode(defaultItemCode),
-      artworkFiles: Array.isArray(defaultArtworkFiles) ? defaultArtworkFiles : [],
+      artworkFiles: safeDefaultFiles,
       pantoneColors: ['CMYK', 'Gold'],
       dimensions: 'Standard Dimensions',
       barcode: '',
@@ -81,9 +128,12 @@ function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwC
     const vName = v.variantName || v.name || `Variant ${idx + 1}`;
     const vCode = v.itemCode || v.code || defaultItemCode || 'PM-TBD';
     const vAwCode = v.artworkCode || (v.code ? getArtworkCode(v.code) : '') || getArtworkCode(vCode);
-    let files = Array.isArray(v.artworkFiles) ? v.artworkFiles : [];
+    let files = Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0 ? v.artworkFiles : [];
     if (files.length === 0 && (v.artworkUrl || v.artwork)) {
       files = [{ name: `${vName} Artwork`, url: v.artworkUrl || v.artwork, type: 'image/png' }];
+    }
+    if (files.length === 0 && safeDefaultFiles.length > 0) {
+      files = safeDefaultFiles;
     }
     files = files.map(f => typeof f === 'string' ? { name: `${vName} Artwork`, url: f, type: 'image/png' } : f);
 
@@ -121,8 +171,30 @@ function getSpecPagination(specSheet, material = {}) {
 
   const params = Array.isArray(specSheet.parameters) ? specSheet.parameters : [];
   const rawVariants = Array.isArray(specSheet.variants) ? specSheet.variants : [];
-  const variants = normalizeVariants(rawVariants, specSheet.docHeader?.itemCode, specSheet.docHeader?.docName, specSheet.docHeader?.artworkCode, specSheet.general?.netWeight || 'Standard', specSheet.artworkFiles);
-  const artworkFiles = Array.isArray(specSheet.artworkFiles) ? specSheet.artworkFiles : [];
+
+  // Resolve effective artwork files across all potential locations
+  let effectiveAwFiles = [];
+  if (Array.isArray(specSheet.artworkFiles) && specSheet.artworkFiles.length > 0) {
+    effectiveAwFiles = specSheet.artworkFiles;
+  } else if (Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0) {
+    effectiveAwFiles = material.artworkFiles;
+  } else if (Array.isArray(material?.specSheet?.artworkFiles) && material.specSheet.artworkFiles.length > 0) {
+    effectiveAwFiles = material.specSheet.artworkFiles;
+  } else if (material?.artworkUrl || material?.artwork) {
+    effectiveAwFiles = [{ name: `${material.name || 'Material'} Artwork`, url: material.artworkUrl || material.artwork, type: 'image/png' }];
+  }
+
+  const variants = normalizeVariants(
+    rawVariants,
+    specSheet.docHeader?.itemCode || material?.pmCode,
+    specSheet.docHeader?.docName || material?.name,
+    specSheet.docHeader?.artworkCode || material?.artworkCode,
+    specSheet.general?.netWeight || 'Standard',
+    effectiveAwFiles
+  );
+  const artworkFiles = Array.isArray(specSheet.artworkFiles) && specSheet.artworkFiles.length > 0
+    ? specSheet.artworkFiles
+    : effectiveAwFiles;
   
   // Artwork pages count: at least 1 page per variant if variants exist, or 1 page if artwork files exist
   const artworkPageCount = variants.length > 0 ? variants.length : Math.max(1, artworkFiles.length > 0 ? 1 : 1);
@@ -203,6 +275,7 @@ export default function SpecModal({
   const artworkInputRef = useRef(null);
   const variantArtworkInputRef = useRef(null);
   const [activeVariantUploadIdx, setActiveVariantUploadIdx] = useState(null);
+  const [previewArtworkModal, setPreviewArtworkModal] = useState(null);
   const isPrintingRef = useRef(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState('');
@@ -320,18 +393,34 @@ export default function SpecModal({
       const pm = material.pmCode || generateDefaultPMCode(material.type, mIdx || 0);
       const aw = getArtworkCode(pm);
 
+      // Safe artwork files resolution across all potential locations
+      let effectiveArtworkFiles = [];
+      if (Array.isArray(material.artworkFiles) && material.artworkFiles.length > 0) {
+        effectiveArtworkFiles = material.artworkFiles;
+      } else if (Array.isArray(material.specSheet?.artworkFiles) && material.specSheet.artworkFiles.length > 0) {
+        effectiveArtworkFiles = material.specSheet.artworkFiles;
+      } else if (material.artworkUrl || material.artwork) {
+        effectiveArtworkFiles = [{ name: `${material.name || 'Material'} Artwork`, url: material.artworkUrl || material.artwork, type: 'image/png' }];
+      }
+
       if (material.specSheet && material.specSheet.docHeader) {
         const sheet = JSON.parse(JSON.stringify(material.specSheet));
         sheet.docHeader.itemCode = material.clubbedCodes || sheet.docHeader.clubbedCodes || sheet.docHeader.itemCode || pm;
         sheet.docHeader.artworkCode = aw;
         
+        // Ensure sheet.artworkFiles has prefilled artwork if empty
+        const sheetAwFiles = (Array.isArray(sheet.artworkFiles) && sheet.artworkFiles.length > 0)
+          ? sheet.artworkFiles
+          : effectiveArtworkFiles;
+        sheet.artworkFiles = sheetAwFiles;
+
         // Sync variants safely
         const rawVars = (Array.isArray(sheet.variants) && sheet.variants.length > 0)
           ? sheet.variants
           : (Array.isArray(material.variants) && material.variants.length > 0 ? material.variants : []);
-        sheet.variants = normalizeVariants(rawVars, pm, project.projectName || material.name, aw, project.skuSize || project.grammage, sheet.artworkFiles || material.artworkFiles);
+        sheet.variants = normalizeVariants(rawVars, pm, project?.projectName || material.name, aw, project?.skuSize || project?.grammage, sheetAwFiles);
         setSpecSheet(sheet);
-        setArtworkFiles(sheet.artworkFiles || material.artworkFiles || []);
+        setArtworkFiles(sheetAwFiles);
       } else {
         const defaultSheet = getDefaultSpecSheet(
           material.type,
@@ -341,12 +430,14 @@ export default function SpecModal({
         );
         defaultSheet.docHeader.itemCode = material.clubbedCodes || material.pmCode || pm;
         defaultSheet.docHeader.artworkCode = aw;
+        defaultSheet.artworkFiles = effectiveArtworkFiles;
+
         const rawVars = Array.isArray(material.variants) && material.variants.length > 0
           ? material.variants
           : (Array.isArray(defaultSheet.variants) && defaultSheet.variants.length > 0 ? defaultSheet.variants : []);
-        defaultSheet.variants = normalizeVariants(rawVars, pm, project?.projectName || material.name, aw, project?.skuSize || project?.grammage, material.artworkFiles);
+        defaultSheet.variants = normalizeVariants(rawVars, pm, project?.projectName || material.name, aw, project?.skuSize || project?.grammage, effectiveArtworkFiles);
         setSpecSheet(defaultSheet);
-        setArtworkFiles(material.artworkFiles || []);
+        setArtworkFiles(effectiveArtworkFiles);
       }
       setPromptAction(null);
       setPromptText('');
@@ -554,6 +645,10 @@ export default function SpecModal({
   const processUploadedFile = (file, customCode = null) => {
     return new Promise((resolve) => {
       if (!file) return resolve(null);
+      if (file.size && file.size > 30 * 1024 * 1024) {
+        if (showToast) showToast('⚠️ Uploaded file exceeds 30MB. Please use a file under 30MB.', 'warning');
+        return resolve(null);
+      }
       const pm = customCode || specSheet?.docHeader?.itemCode || material.pmCode || 'PM-SPEC';
       const aw = getArtworkCode(pm);
       const cleanOriginal = file.name.replace(/^AW-[^_]+_/, '').replace(/^PM-[^_]+_/, '');
@@ -628,7 +723,8 @@ export default function SpecModal({
         if (copyVars[activeVariantUploadIdx]) {
           copyVars[activeVariantUploadIdx] = {
             ...copyVars[activeVariantUploadIdx],
-            artworkFiles: [...(copyVars[activeVariantUploadIdx].artworkFiles || []), ...valid]
+            artworkFiles: [...(copyVars[activeVariantUploadIdx].artworkFiles || []), ...valid],
+            hasRemovedArtwork: false
           };
         }
         return { ...prev, variants: copyVars };
@@ -642,9 +738,13 @@ export default function SpecModal({
     setSpecSheet(prev => {
       const copyVars = [...(prev.variants || [])];
       if (copyVars[vIdx]) {
+        const remaining = (copyVars[vIdx].artworkFiles || []).filter((_, i) => i !== fIdx);
         copyVars[vIdx] = {
           ...copyVars[vIdx],
-          artworkFiles: (copyVars[vIdx].artworkFiles || []).filter((_, i) => i !== fIdx)
+          artworkFiles: remaining,
+          hasRemovedArtwork: remaining.length === 0,
+          artworkUrl: null,
+          artwork: null
         };
       }
       return { ...prev, variants: copyVars };
@@ -655,7 +755,29 @@ export default function SpecModal({
   const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
-      const sheetWithArtwork = { ...specSheet, artworkFiles };
+      const effectiveFiles = (Array.isArray(artworkFiles) && artworkFiles.length > 0)
+        ? artworkFiles
+        : (Array.isArray(specSheet?.artworkFiles) && specSheet.artworkFiles.length > 0)
+        ? specSheet.artworkFiles
+        : (Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0)
+        ? material.artworkFiles
+        : [];
+
+      const syncedVariants = Array.isArray(specSheet?.variants)
+        ? specSheet.variants.map(v => ({
+            ...v,
+            artworkFiles: (Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0)
+              ? v.artworkFiles
+              : (v.hasRemovedArtwork ? [] : effectiveFiles)
+          }))
+        : [];
+
+      const sheetWithArtwork = {
+        ...specSheet,
+        artworkFiles: effectiveFiles,
+        variants: syncedVariants.length > 0 ? syncedVariants : specSheet?.variants
+      };
+
       if (material.libId) {
         await updateSpecInLibrary(material.libId, {
           specData: sheetWithArtwork,
@@ -683,7 +805,29 @@ export default function SpecModal({
   const handleSubmitForCheck = async () => {
     setIsSaving(true);
     try {
-      const sheetWithArtwork = { ...specSheet, artworkFiles };
+      const effectiveFiles = (Array.isArray(artworkFiles) && artworkFiles.length > 0)
+        ? artworkFiles
+        : (Array.isArray(specSheet?.artworkFiles) && specSheet.artworkFiles.length > 0)
+        ? specSheet.artworkFiles
+        : (Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0)
+        ? material.artworkFiles
+        : [];
+
+      const syncedVariants = Array.isArray(specSheet?.variants)
+        ? specSheet.variants.map(v => ({
+            ...v,
+            artworkFiles: (Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0)
+              ? v.artworkFiles
+              : (v.hasRemovedArtwork ? [] : effectiveFiles)
+          }))
+        : [];
+
+      const sheetWithArtwork = {
+        ...specSheet,
+        artworkFiles: effectiveFiles,
+        variants: syncedVariants.length > 0 ? syncedVariants : specSheet?.variants
+      };
+
       const res = await saveSpecSheet(project.id, mIdx, sheetWithArtwork, true);
       if (res?.data?.specSheet) {
         setSpecSheet(res.data.specSheet);
@@ -1066,7 +1210,7 @@ export default function SpecModal({
       }
       return `
         <td style="border:1px solid #000;padding:4px 6px;text-align:center;width:33.33%;vertical-align:middle;background:#fff;height:52px;">
-          <div style="color:#666;font-size:8pt;font-style:italic;">Sign. &amp; Date (${label})</div>
+          <div style="color:#666;font-size:8pt;font-style:italic;">Signed &amp; Date (${label})</div>
         </td>
       `;
     };
@@ -1413,12 +1557,7 @@ export default function SpecModal({
     const vName = variantObj.variantName || variantObj.name || `Variant ${vNum}`;
     const vCode = variantObj.itemCode || variantObj.code || specSheet.docHeader?.itemCode || material.pmCode || 'PM-TBD';
     const vAwCode = variantObj.artworkCode || (variantObj.code ? getArtworkCode(variantObj.code) : '') || getArtworkCode(vCode);
-    let awFiles = Array.isArray(variantObj.artworkFiles) ? variantObj.artworkFiles : [];
-    if (awFiles.length === 0 && (variantObj.artworkUrl || variantObj.artwork)) {
-      const artUrl = variantObj.artworkUrl || variantObj.artwork;
-      awFiles = [{ name: `${vName} Artwork`, url: artUrl, type: 'image/png' }];
-    }
-    awFiles = awFiles.map(f => typeof f === 'string' ? { name: `${vName} Artwork`, url: f, type: 'image/png' } : f);
+    const awFiles = resolveVariantArtworkFiles(variantObj, artworkFiles, material, specSheet);
 
     const hasMultipleVariants = variants.length > 1;
     const artworkHeading = hasMultipleVariants
@@ -1570,7 +1709,7 @@ export default function SpecModal({
       return (
         <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', verticalAlign: 'middle', background: '#fff', color: '#000', height: '56px' }}>
           <div style={{ color: '#666', fontSize: '9.5px', fontStyle: 'italic', marginBottom: '4px' }}>
-            Sign. &amp; Date ({label})
+            Signed &amp; Date ({label})
           </div>
           {canEdit && (
             <button
@@ -1578,21 +1717,20 @@ export default function SpecModal({
               className="btn btn-sm no-print"
               onClick={() => handleOpenDigitalSign(roleKey, label)}
               style={{
-                background: 'linear-gradient(135deg, #0d9488, #0284c7)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
+                background: 'rgba(0, 200, 215, 0.1)',
+                color: 'var(--teal)',
+                border: '1px solid var(--teal)',
+                borderRadius: 'var(--radius-sm)',
                 padding: '3px 8px',
                 fontSize: '9px',
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '3px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                gap: '4px'
               }}
             >
-              ✍️ Digitally Sign
+              <CheckCircle2 size={10} /> Digitally Sign
             </button>
           )}
         </td>
@@ -1743,12 +1881,7 @@ export default function SpecModal({
     const vName = variantObj.variantName || variantObj.name || `Variant ${vNum}`;
     const vCode = variantObj.itemCode || variantObj.code || specSheet.docHeader?.itemCode || material.pmCode || 'PM-TBD';
     const vAwCode = variantObj.artworkCode || (variantObj.code ? getArtworkCode(variantObj.code) : '') || getArtworkCode(vCode);
-    let awFiles = Array.isArray(variantObj.artworkFiles) ? variantObj.artworkFiles : [];
-    if (awFiles.length === 0 && (variantObj.artworkUrl || variantObj.artwork)) {
-      const artUrl = variantObj.artworkUrl || variantObj.artwork;
-      awFiles = [{ name: `${vName} Artwork`, url: artUrl, type: 'image/png' }];
-    }
-    awFiles = awFiles.map(f => typeof f === 'string' ? { name: `${vName} Artwork`, url: f, type: 'image/png' } : f);
+    const awFiles = resolveVariantArtworkFiles(variantObj, artworkFiles, material, specSheet);
 
     return (
       <div className="spec-sheet-page" style={pageSheetStyle}>
@@ -1774,21 +1907,14 @@ export default function SpecModal({
                     className="btn btn-primary no-print"
                     onClick={() => triggerVariantArtworkUpload(vNum - 1)}
                     style={{
-                      background: 'linear-gradient(135deg, #0284c7, #4f46e5)',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '8px 20px',
-                      borderRadius: '6px',
+                      padding: '8px 18px',
                       fontSize: '11.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                      gap: '6px'
                     }}
                   >
-                    <span>📤</span>
+                    <Plus size={14} />
                     <span>Upload Approved Artwork File</span>
                   </button>
                 )}
@@ -1932,72 +2058,69 @@ export default function SpecModal({
             {canEditSpec && (
               <button
                 type="button"
-                className="btn btn-sm no-print"
+                className={activeTab === 'edit' ? "btn btn-secondary btn-sm no-print" : "btn btn-primary btn-sm no-print"}
                 onClick={() => setActiveTab(activeTab === 'edit' ? 'combined' : 'edit')}
                 title={activeTab === 'edit' ? 'Switch to Spec Preview' : 'Edit Technical Parameters, Tolerances, Standards, and Materials'}
                 style={{
-                  background: activeTab === 'edit' ? 'linear-gradient(135deg, #0d9488, #0284c7)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                  color: '#fff',
-                  fontWeight: 800,
                   fontSize: '11.5px',
-                  padding: '7px 14px',
-                  border: 'none',
-                  borderRadius: '6px',
+                  padding: '6px 14px',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: activeTab === 'edit' ? '0 2px 8px rgba(13, 148, 136, 0.4)' : '0 2px 8px rgba(245, 158, 11, 0.4)',
-                  cursor: 'pointer'
+                  gap: '6px'
                 }}
               >
-                {activeTab === 'edit' ? '👁️ View Spec Preview' : '✏️ Edit Specification'}
+                {activeTab === 'edit' ? (
+                  <>
+                    <Eye size={12} />
+                    <span>View Spec Preview</span>
+                  </>
+                ) : (
+                  <>
+                    <Edit2 size={12} />
+                    <span>Edit Specification</span>
+                  </>
+                )}
               </button>
             )}
             {canEdit && (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm no-print"
+                className="btn btn-secondary btn-sm no-print"
                 onClick={() => handleOpenDigitalSign(isHead ? 'approvedBy' : isPM ? 'checkedBy' : 'preparedBy', isHead ? 'Approved By' : isPM ? 'Checked By' : 'Prepared By')}
                 title="Review and apply digital signature"
-                style={{ border: '1px solid rgba(16,185,129,0.4)', color: '#34d399', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                style={{ color: 'var(--success)', borderColor: 'rgba(56, 201, 138, 0.3)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                ✍️ Digitally Sign
+                <CheckCircle2 size={12} /> Digitally Sign
               </button>
             )}
             {canEdit && !isApproved && (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm no-print"
+                className="btn btn-secondary btn-sm no-print"
                 onClick={() => setShowConverter(true)}
                 title="Convert existing legacy PDF spec into enterprise format"
-                style={{ border: '1px solid rgba(20,184,166,0.4)', color: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                style={{ color: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                ✨ Convert from PDF
+                <Sparkles size={12} /> Convert from PDF
               </button>
             )}
             <button
               type="button"
-              className="btn btn-ghost btn-sm no-print"
+              className="btn btn-secondary btn-sm no-print"
               onClick={buildAndPrint}
               title="Open browser print dialog"
-              style={{ border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              🖨️ Print Spec
+              <Printer size={12} /> Print Spec
             </button>
             <button
               type="button"
-              className="btn btn-sm no-print"
+              className="btn btn-primary btn-sm no-print"
               onClick={handleDownloadPdf}
               disabled={isDownloadingPdf}
               style={{
-                background: isDownloadingPdf ? 'var(--bg-card)' : 'linear-gradient(135deg, #059669, #047857)',
-                color: '#fff',
-                fontWeight: 700,
-                border: 'none',
-                borderRadius: '6px',
+                fontSize: '11px',
                 padding: '6px 14px',
-                boxShadow: '0 2px 8px rgba(5,150,105,0.4)',
-                cursor: isDownloadingPdf ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px'
@@ -2005,9 +2128,12 @@ export default function SpecModal({
               title="Directly save PDF specification to your Downloads folder"
             >
               {isDownloadingPdf ? (
-                <>⏳ Generating ({downloadProgress || 'PDF'})...</>
+                <>Generating ({downloadProgress || 'PDF'})...</>
               ) : (
-                <>⬇ Download Spec (PDF)</>
+                <>
+                  <Download size={12} />
+                  <span>Download Spec (PDF)</span>
+                </>
               )}
             </button>
             <button className="modal-close" onClick={onClose} style={{ fontSize: '18px' }}>✕</button>
@@ -2084,46 +2210,40 @@ export default function SpecModal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95))',
-                  border: '1.5px solid #f59e0b',
-                  borderRadius: '8px',
-                  padding: '10px 16px',
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px 18px',
                   flexWrap: 'wrap',
-                  gap: '10px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+                  gap: '12px',
+                  boxShadow: 'var(--shadow-sm)',
                   boxSizing: 'border-box'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '18px' }}>✏️</span>
+                    <Edit2 size={16} style={{ color: 'var(--teal)' }} />
                     <div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#fef3c7' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
                         Need to update or correct parameters before final approval?
                       </div>
-                      <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                         Ensure all technical dimensions, GSM, test standards, and defects are verified.
                       </div>
                     </div>
                   </div>
                   <button
                     type="button"
-                    className="btn btn-sm"
+                    className="btn btn-primary btn-sm"
                     onClick={() => setActiveTab('edit')}
                     style={{
-                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                      color: '#fff',
-                      fontWeight: 800,
                       fontSize: '11px',
                       padding: '6px 14px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      boxShadow: '0 2px 6px rgba(245, 158, 11, 0.4)'
+                      gap: '6px'
                     }}
                   >
-                    ✏️ Edit Specification Now
+                    <Edit2 size={12} />
+                    <span>Edit Specification Now</span>
                   </button>
                 </div>
               )}
@@ -2553,44 +2673,194 @@ export default function SpecModal({
                         </div>
                       </div>
 
-                      {/* Artwork File Upload for this Variant */}
-                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                            Artwork File: {v.artworkFiles?.length > 0 ? (
-                              <strong style={{ color: '#10b981' }}>{v.artworkFiles[0].name}</strong>
-                            ) : (
-                              <span style={{ color: '#f59e0b' }}>Pending upload</span>
-                            )}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            type="button"
-                            className="btn btn-sm"
-                            style={{ background: '#db2777', color: '#fff', fontSize: '10px', padding: '4px 10px' }}
-                            onClick={() => {
-                              setActiveVariantUploadIdx(vIdx);
-                              if (variantArtworkInputRef.current) {
-                                variantArtworkInputRef.current.value = '';
-                                variantArtworkInputRef.current.click();
-                              }
-                            }}
-                          >
-                            🖼️ Upload Variant Artwork
-                          </button>
-                          {v.artworkFiles?.length > 0 && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              style={{ color: '#ef4444', fontSize: '10px', padding: '4px 8px' }}
-                              onClick={() => handleRemoveVariantArtwork(vIdx, 0)}
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      {/* Artwork File Upload & Visual Preview for this Variant */}
+                      {(() => {
+                        const vAwFiles = resolveVariantArtworkFiles(v, artworkFiles, material, specSheet);
+                        const vActiveFile = (vAwFiles && vAwFiles.length > 0) ? vAwFiles[0] : null;
+                        const hasFile = Boolean(vActiveFile && (vActiveFile.name || vActiveFile.url));
+                        const isImage = Boolean(
+                          vActiveFile?.type?.startsWith('image/') ||
+                          (!vActiveFile?.type && (
+                            vActiveFile?.name?.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif|svg)$/i) ||
+                            vActiveFile?.url?.startsWith('data:image/')
+                          ))
+                        );
+
+                        return (
+                          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: hasFile && vActiveFile.url ? '10px' : '0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                                  Artwork File:{' '}
+                                  {hasFile ? (
+                                    <strong style={{ color: '#10b981' }}>{vActiveFile.name}</strong>
+                                  ) : (
+                                    <span style={{ color: '#f59e0b' }}>Pending upload</span>
+                                  )}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm"
+                                  style={{ background: '#db2777', color: '#fff', fontSize: '10px', padding: '4px 10px' }}
+                                  onClick={() => {
+                                    setActiveVariantUploadIdx(vIdx);
+                                    if (variantArtworkInputRef.current) {
+                                      variantArtworkInputRef.current.value = '';
+                                      variantArtworkInputRef.current.click();
+                                    }
+                                  }}
+                                >
+                                  🖼️ {hasFile ? 'Change Variant Artwork' : 'Upload Variant Artwork'}
+                                </button>
+                                {hasFile && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    style={{ color: '#ef4444', fontSize: '10px', padding: '4px 8px' }}
+                                    onClick={() => handleRemoveVariantArtwork(vIdx, 0)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Visual Artwork Preview Box */}
+                            {hasFile && vActiveFile.url ? (
+                              <div style={{
+                                background: 'rgba(3, 14, 18, 0.75)',
+                                border: '1px solid rgba(0, 243, 255, 0.25)',
+                                borderRadius: '8px',
+                                padding: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--teal)' }}>
+                                      🔍 Variant Artwork Preview ({v.variantName || `Variant ${vIdx + 1}`})
+                                    </span>
+                                    <span style={{
+                                      fontSize: '9.5px',
+                                      padding: '1px 6px',
+                                      borderRadius: '4px',
+                                      background: 'rgba(16, 185, 129, 0.15)',
+                                      color: '#34d399',
+                                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                                      fontWeight: 600
+                                    }}>
+                                      {isImage ? 'Commercial Graphic' : 'PDF Proof Document'}
+                                    </span>
+                                  </div>
+
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline btn-sm"
+                                      style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                      onClick={() => setPreviewArtworkModal({
+                                        url: vActiveFile.url,
+                                        name: vActiveFile.name,
+                                        title: `${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`
+                                      })}
+                                      title="Open full-resolution preview"
+                                    >
+                                      <Eye size={12} />
+                                      <span>Full Preview</span>
+                                    </button>
+                                    <a
+                                      href={vActiveFile.url}
+                                      download={vActiveFile.name || 'artwork'}
+                                      className="btn btn-outline btn-sm"
+                                      style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                      title="Download artwork file"
+                                    >
+                                      <Download size={12} />
+                                    </a>
+                                  </div>
+                                </div>
+
+                                <div
+                                  onClick={() => setPreviewArtworkModal({
+                                    url: vActiveFile.url,
+                                    name: vActiveFile.name,
+                                    title: `${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`
+                                  })}
+                                  style={{
+                                    width: '100%',
+                                    minHeight: '160px',
+                                    maxHeight: '280px',
+                                    background: '#0a1417',
+                                    borderRadius: '6px',
+                                    border: '1px dashed rgba(255, 255, 255, 0.2)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                    cursor: 'pointer',
+                                    position: 'relative',
+                                    padding: '10px',
+                                    boxSizing: 'border-box',
+                                    transition: 'border-color 0.2s, background 0.2s'
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.borderColor = 'var(--teal)';
+                                    e.currentTarget.style.background = '#0e1a1e';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                    e.currentTarget.style.background = '#0a1417';
+                                  }}
+                                  title="Click to view full preview"
+                                >
+                                  {isImage ? (
+                                    <img
+                                      src={vActiveFile.url}
+                                      alt={v.variantName || 'Artwork Preview'}
+                                      style={{
+                                        maxHeight: '260px',
+                                        maxWidth: '100%',
+                                        objectFit: 'contain',
+                                        borderRadius: '4px',
+                                        display: 'block'
+                                      }}
+                                    />
+                                  ) : (
+                                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                                      <div style={{ fontSize: '38px', marginBottom: '6px' }}>📄</div>
+                                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#ffffff' }}>{vActiveFile.name}</div>
+                                      <div style={{ fontSize: '10.5px', color: 'var(--text-dim)', marginTop: '4px' }}>
+                                        PDF Artwork Proof &bull; Click to open
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div style={{
+                                    position: 'absolute',
+                                    bottom: '8px',
+                                    right: '8px',
+                                    background: 'rgba(0, 0, 0, 0.75)',
+                                    color: '#ffffff',
+                                    fontSize: '9.5px',
+                                    padding: '3px 8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    pointerEvents: 'none'
+                                  }}>
+                                    <Eye size={11} />
+                                    <span>Click to enlarge</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -2861,97 +3131,124 @@ export default function SpecModal({
             {canEditSpec && activeTab !== 'edit' && (
               <button
                 type="button"
-                className="btn btn-sm"
+                className="btn btn-primary btn-sm"
                 onClick={() => setActiveTab('edit')}
                 style={{
-                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                  color: '#fff',
-                  fontWeight: 800,
-                  fontSize: '11px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  border: 'none',
-                  padding: '7px 14px',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(245, 158, 11, 0.35)'
-                }}
-              >
-                ✏️ Edit Spec Data
-              </button>
-            )}
-
-            {activeTab === 'edit' && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => setActiveTab('combined')}
-                style={{
-                  color: 'var(--teal)',
-                  border: '1px solid var(--teal)',
-                  fontWeight: 700,
-                  fontSize: '11px'
-                }}
-              >
-                👁️ View Spec Preview
-              </button>
-            )}
-
-            {canEditSpec && (activeTab === 'edit' || status === 'DRAFT' || status === 'REVISION_REQUESTED') && (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={handleSaveDraft}
-                disabled={isSaving}
-                style={{ border: '1px solid var(--border)', fontWeight: 700, fontSize: '11px' }}
-              >
-                💾 Save Draft / Changes
-              </button>
-            )}
-
-            {canEdit && !isApproved && (status === 'DRAFT' || status === 'REVISION_REQUESTED') && (
-              <button className="btn btn-primary btn-sm" onClick={handleSubmitForCheck} disabled={isSaving} style={{ fontSize: '11px' }}>
-                📤 Submit for PM Check →
-              </button>
-            )}
-
-            {canEdit && (
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={() => handleOpenDigitalSign(isHead ? 'approvedBy' : isPM ? 'checkedBy' : 'preparedBy', isHead ? 'Approved By' : isPM ? 'Checked By' : 'Prepared By')}
-                style={{
-                  background: 'linear-gradient(135deg, #059669, #0284c7)',
-                  color: '#fff',
-                  fontWeight: 700,
                   fontSize: '11px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}
               >
-                ✍️ Review &amp; Digitally Sign
+                <Edit2 size={12} />
+                <span>Edit Spec Data</span>
+              </button>
+            )}
+
+            {activeTab === 'edit' && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setActiveTab('combined')}
+                style={{
+                  color: 'var(--teal)',
+                  fontSize: '11px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Eye size={12} />
+                <span>View Spec Preview</span>
+              </button>
+            )}
+
+            {canEditSpec && (activeTab === 'edit' || status === 'DRAFT' || status === 'REVISION_REQUESTED') && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleSaveDraft}
+                disabled={isSaving}
+                style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Save size={12} />
+                <span>Save Draft / Changes</span>
+              </button>
+            )}
+
+            {canEdit && !isApproved && (status === 'DRAFT' || status === 'REVISION_REQUESTED') && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSubmitForCheck}
+                disabled={isSaving}
+                style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Send size={12} />
+                <span>Submit for PM Check →</span>
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleOpenDigitalSign(isHead ? 'approvedBy' : isPM ? 'checkedBy' : 'preparedBy', isHead ? 'Approved By' : isPM ? 'Checked By' : 'Prepared By')}
+                style={{
+                  color: 'var(--teal)',
+                  borderColor: 'rgba(0, 200, 215, 0.3)',
+                  fontSize: '11px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <CheckCircle2 size={12} />
+                <span>Review &amp; Digitally Sign</span>
               </button>
             )}
 
             {isPM && !isApproved && (
               <>
                 {status !== 'DRAFT' && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => { setPromptAction('reject'); setPromptText(''); }} disabled={isSaving} style={{ color: '#f87171', fontSize: '11px' }}>↩ Request Changes</button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { setPromptAction('reject'); setPromptText(''); }}
+                    disabled={isSaving}
+                    style={{ color: 'var(--danger)', fontSize: '11px' }}
+                  >
+                    Request Changes
+                  </button>
                 )}
                 {!isChecked && (
-                  <button className="btn btn-primary btn-sm" onClick={() => { setPromptAction('check'); setPromptText(''); }} disabled={isSaving} style={{ background: '#7c3aed', fontSize: '11px' }}>🛡️ Check &amp; Verify (PM)</button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => { setPromptAction('check'); setPromptText(''); }}
+                    disabled={isSaving}
+                    style={{ color: 'var(--info)', borderColor: 'rgba(79, 140, 255, 0.3)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <ShieldCheck size={12} />
+                    <span>Check &amp; Verify (PM)</span>
+                  </button>
                 )}
               </>
             )}
 
             {isHead && !isApproved && (
-              <button className="btn btn-sm" onClick={() => { setPromptAction('approve'); setPromptText(''); }} disabled={isSaving} style={{ background: '#10b981', color: '#fff', fontWeight: 800, padding: '7px 14px', fontSize: '11px' }}>
-                👑 Final Approve (Head)
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => { setPromptAction('approve'); setPromptText(''); }}
+                disabled={isSaving}
+                style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Check size={12} />
+                <span>Final Approve (Head)</span>
               </button>
             )}
 
             {isApproved && (
-              <span style={{ color: '#10b981', fontSize: '12px', fontWeight: 700 }}>✅ Specification Approved &amp; Locked</span>
+              <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <CheckCircle2 size={13} />
+                <span>Specification Approved &amp; Locked</span>
+              </span>
             )}
           </div>
         </div>
@@ -2975,29 +3272,29 @@ export default function SpecModal({
         {/* Digital Signature Modal */}
         {digitalSignModal.isOpen && (
           <div className="modal-overlay open" style={{ zIndex: 1300, background: 'rgba(0,0,0,0.7)' }}>
-            <div className="modal" style={{ maxWidth: '540px', background: 'var(--navy-dark)', border: '1px solid var(--border)', borderRadius: '8px', padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', background: 'linear-gradient(135deg, #0f172a, #1e293b)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 800, fontSize: '13px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>✍️</span>
+            <div className="modal" style={{ maxWidth: '540px', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle2 size={15} style={{ color: 'var(--teal)' }} />
                   <span>Review &amp; Digital Signature Sign-Off</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setDigitalSignModal(prev => ({ ...prev, isOpen: false }))}
-                  style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '16px', cursor: 'pointer' }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
 
               <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ padding: '10px 12px', background: 'rgba(2, 132, 199, 0.1)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: '6px', fontSize: '11px', color: '#bae6fd', lineHeight: 1.5 }}>
-                  Specification: <strong>{specSheet.docHeader?.docName || material.name}</strong><br/>
-                  Item Code: <strong>{specSheet.docHeader?.itemCode || material.pmCode}</strong> &bull; Rev {specSheet.docHeader?.revision || '0'}
+                <div style={{ padding: '10px 12px', background: 'var(--card-bg-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  Specification: <strong style={{ color: 'var(--text-main)' }}>{specSheet.docHeader?.docName || material.name}</strong><br/>
+                  Item Code: <strong style={{ color: 'var(--teal)' }}>{specSheet.docHeader?.itemCode || material.pmCode}</strong> &bull; Rev {specSheet.docHeader?.revision || '0'}
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '11px', fontWeight: 700 }}>Signing Role</label>
+                  <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>Signing Role</label>
                   <select
                     className="form-input"
                     value={digitalSignModal.roleKey}
@@ -3024,7 +3321,7 @@ export default function SpecModal({
 
                 <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '11px', fontWeight: 700 }}>Signer Full Name *</label>
+                    <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>Signer Full Name *</label>
                     <input
                       className="form-input"
                       value={digitalSignModal.signerName}
@@ -3034,7 +3331,7 @@ export default function SpecModal({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '11px', fontWeight: 700 }}>Designation / Title</label>
+                    <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>Designation / Title</label>
                     <input
                       className="form-input"
                       value={digitalSignModal.signerTitle}
@@ -3046,7 +3343,7 @@ export default function SpecModal({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '11px', fontWeight: 700 }}>Technical Review Comments (Optional)</label>
+                  <label className="form-label" style={{ fontSize: '11px', fontWeight: 600 }}>Technical Review Comments (Optional)</label>
                   <input
                     className="form-input"
                     value={digitalSignModal.signerComments}
@@ -3056,7 +3353,7 @@ export default function SpecModal({
                   />
                 </div>
 
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '11px', color: '#cbd5e1', cursor: 'pointer', marginTop: '4px', lineHeight: 1.4 }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '11px', color: 'var(--text-secondary)', cursor: 'pointer', marginTop: '4px', lineHeight: 1.4 }}>
                   <input
                     type="checkbox"
                     checked={digitalSignModal.acknowledged}
@@ -3069,10 +3366,10 @@ export default function SpecModal({
                 </label>
               </div>
 
-              <div style={{ padding: '12px 20px', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div style={{ padding: '12px 20px', background: 'var(--card-bg-subtle)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => setDigitalSignModal(prev => ({ ...prev, isOpen: false }))}
                   disabled={isSaving}
                 >
@@ -3084,15 +3381,13 @@ export default function SpecModal({
                   onClick={handleConfirmDigitalSign}
                   disabled={isSaving || !digitalSignModal.acknowledged || !digitalSignModal.signerName.trim()}
                   style={{
-                    background: 'linear-gradient(135deg, #059669, #0284c7)',
-                    color: '#fff',
-                    fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px'
                   }}
                 >
-                  {isSaving ? 'Applying Signature...' : '✍️ Apply Digital Signature'}
+                  <CheckCircle2 size={13} />
+                  <span>{isSaving ? 'Applying Signature...' : 'Apply Digital Signature'}</span>
                 </button>
               </div>
             </div>
@@ -3109,15 +3404,138 @@ export default function SpecModal({
             initialMaterialIdx={mIdx}
             onSpecSaved={(savedSpec) => {
               if (savedSpec?.specData) {
-                setSpecSheet(savedSpec.specData);
-                if (savedSpec.specData.artworkFiles) {
-                  setArtworkFiles(savedSpec.specData.artworkFiles);
+                const sheet = savedSpec.specData;
+                const effectiveAw = (Array.isArray(sheet.artworkFiles) && sheet.artworkFiles.length > 0)
+                  ? sheet.artworkFiles
+                  : (Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0)
+                  ? material.artworkFiles
+                  : [];
+                sheet.artworkFiles = effectiveAw;
+                if (Array.isArray(sheet.variants)) {
+                  sheet.variants = normalizeVariants(sheet.variants, sheet.docHeader?.itemCode, sheet.docHeader?.docName, sheet.docHeader?.artworkCode, sheet.general?.netWeight, effectiveAw);
                 }
+                setSpecSheet(sheet);
+                setArtworkFiles(effectiveAw);
               }
               if (onRefresh) onRefresh();
             }}
             showToast={showToast}
           />
+        )}
+
+        {/* Full Artwork Preview Modal / Lightbox */}
+        {previewArtworkModal && (
+          <div
+            className="modal-overlay open"
+            style={{
+              zIndex: 1350,
+              background: 'rgba(3, 14, 18, 0.88)',
+              backdropFilter: 'blur(8px)',
+              padding: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => setPreviewArtworkModal(null)}
+          >
+            <div
+              className="modal"
+              style={{
+                maxWidth: '90vw',
+                width: '900px',
+                maxHeight: '90vh',
+                background: 'var(--card-bg, #062a30)',
+                border: '1px solid var(--border-color, rgba(0, 243, 255, 0.3))',
+                borderRadius: 'var(--radius-lg, 12px)',
+                padding: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '12px 18px',
+                background: 'var(--bg-sidebar, #041c20)',
+                borderBottom: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <Eye size={15} style={{ color: 'var(--teal, #00f3ff)', flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: '12.5px', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {previewArtworkModal.title || previewArtworkModal.name || 'Artwork Preview'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                  {previewArtworkModal.url && (
+                    <a
+                      href={previewArtworkModal.url}
+                      download={previewArtworkModal.name || 'artwork'}
+                      className="btn btn-outline btn-sm"
+                      style={{ padding: '3px 8px', fontSize: '10.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      title="Download original file"
+                    >
+                      <Download size={12} />
+                      <span>Download</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewArtworkModal(null)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted, #94a3b8)',
+                      padding: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{
+                flex: 1,
+                overflow: 'auto',
+                padding: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#0d161a',
+                minHeight: '380px'
+              }}>
+                {previewArtworkModal.type?.includes('pdf') ||
+                 previewArtworkModal.name?.toLowerCase().endsWith('.pdf') ||
+                 previewArtworkModal.url?.startsWith('data:application/pdf') ||
+                 previewArtworkModal.url?.toLowerCase().includes('.pdf') ? (
+                  <iframe
+                    src={`${previewArtworkModal.url}#page=1&view=FitH&toolbar=1`}
+                    title={previewArtworkModal.name || 'PDF Preview'}
+                    style={{ width: '100%', height: '70vh', border: 'none' }}
+                  />
+                ) : (
+                  <img
+                    src={previewArtworkModal.url}
+                    alt={previewArtworkModal.name || 'Artwork'}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '75vh',
+                      objectFit: 'contain',
+                      borderRadius: '6px'
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

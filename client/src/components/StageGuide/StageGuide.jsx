@@ -20,18 +20,18 @@ export default function StageGuide() {
                 onClick={() => setActiveStageId(s.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 16px', borderRadius: '12px', border: '1px solid',
+                  padding: '12px 16px', borderRadius: 'var(--r-card)', border: '1px solid',
                   borderColor: isActive ? s.color : 'var(--border-color)',
                   background: isActive ? `${s.color}15` : 'var(--card-bg)',
-                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
-                  boxShadow: isActive ? `0 2px 8px ${s.color}20` : 'none',
+                  cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s ease',
+                  boxShadow: isActive ? 'var(--shadow-xs)' : 'none',
                   outline: 'none'
                 }}
               >
                 <div style={{ 
                   background: isActive ? s.color : 'var(--border-color)', 
                   color: isActive ? '#fff' : 'var(--text-faint)',
-                  width: '32px', height: '32px', borderRadius: '8px', 
+                  width: '32px', height: '32px', borderRadius: 'var(--r-sm)', 
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontWeight: '900', fontSize: '13px', flexShrink: 0
                 }}>
