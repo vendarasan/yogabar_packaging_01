@@ -38,16 +38,18 @@ export default function ActivityStreamModal({
 
   const filteredLogs = logs.filter(e => {
     if (filter === 'ALL') return true;
-    if (filter === 'REVOKES') return e.action === 'STAGE_REVOKE' || e.action === 'MATERIAL_REVOKE' || e.type === 'REVOKE';
-    if (filter === 'ADVANCES') return e.action === 'STAGE_ADVANCE' || e.action === 'MATERIAL_ADVANCE' || e.type === 'ADVANCE';
-    if (filter === 'CODES') return e.action === 'PMCODE_UPDATE' || e.action === 'FGCODE_UPDATE';
-    if (filter === 'PO') return e.action === 'PO_UPDATE';
-    if (filter === 'SPECS') return e.action === 'SPECS_UPDATE' || e.action === 'SPEC_SIGNOFF';
+    const act = e.eventType || e.action || '';
+    if (filter === 'ARTWORK') return act.startsWith('ARTWORK_');
+    if (filter === 'SPECS') return act.startsWith('SPEC_') || act.startsWith('SPECS_') || act.startsWith('SPECIFICATION_');
+    if (filter === 'ADVANCES') return act === 'STAGE_ADVANCE' || act === 'MATERIAL_ADVANCE' || act === 'STAGE_CHANGED' || e.type === 'ADVANCE';
+    if (filter === 'REVOKES') return act === 'STAGE_REVOKE' || act === 'MATERIAL_REVOKE' || e.type === 'REVOKE';
+    if (filter === 'CODES') return act === 'PMCODE_UPDATE' || act === 'FGCODE_UPDATE';
+    if (filter === 'PO') return act === 'PO_UPDATE';
     return true;
   });
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
+    <div className="modal-overlay open" onClick={onClose} style={{ zIndex: 1000 }}>
       <div
         className="modal activity-stream-modal"
         onClick={(e) => e.stopPropagation()}
@@ -143,11 +145,12 @@ export default function ActivityStreamModal({
         >
           {[
             { id: 'ALL', label: 'All' },
+            { id: 'ARTWORK', label: 'Artwork' },
+            { id: 'SPECS', label: 'Specs' },
+            { id: 'ADVANCES', label: 'Stages' },
             { id: 'REVOKES', label: 'Revokes' },
-            { id: 'ADVANCES', label: 'Advances' },
-            { id: 'CODES', label: 'PM/FG Codes' },
             { id: 'PO', label: 'Purchase Orders' },
-            { id: 'SPECS', label: 'Specs' }
+            { id: 'CODES', label: 'PM/FG Codes' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -190,25 +193,35 @@ export default function ActivityStreamModal({
           ) : (
             filteredLogs.slice(0, 50).map(e => {
               const isUnread = e.timestamp > (seenAt || 0);
-              const isRevoke = e.action === 'STAGE_REVOKE' || e.action === 'MATERIAL_REVOKE' || e.type === 'REVOKE';
-              const isAdvance = e.action === 'STAGE_ADVANCE' || e.action === 'MATERIAL_ADVANCE' || e.type === 'ADVANCE';
-              const isPO = e.action === 'PO_UPDATE';
-              const isSpecs = e.action === 'SPECS_UPDATE' || e.action === 'SPEC_SIGNOFF';
-              const isPM = e.action === 'PMCODE_UPDATE';
-              const isFG = e.action === 'FGCODE_UPDATE';
+              const act = e.eventType || e.action || '';
+              const isRevoke = act === 'STAGE_REVOKE' || act === 'MATERIAL_REVOKE' || e.type === 'REVOKE';
+              const isAdvance = act === 'STAGE_ADVANCE' || act === 'MATERIAL_ADVANCE' || act === 'STAGE_CHANGED' || e.type === 'ADVANCE';
+              const isPO = act === 'PO_UPDATE';
+              const isSpecs = act.startsWith('SPEC_') || act.startsWith('SPECS_') || act.startsWith('SPECIFICATION_');
+              const isArtwork = act.startsWith('ARTWORK_');
+              const isPM = act === 'PMCODE_UPDATE';
+              const isFG = act === 'FGCODE_UPDATE';
 
               let badgeColor = '#4F8CFF';
-              let badgeText = e.action || 'ACTIVITY';
+              let badgeText = act.replace(/_/g, ' ') || 'ACTIVITY';
               let ActionIcon = FileText;
 
               if (isRevoke) {
                 badgeColor = 'var(--danger, #F05D6C)';
-                badgeText = 'MATERIAL REVOKE';
+                badgeText = 'STAGE REVOKE';
                 ActionIcon = RotateCcw;
               } else if (isAdvance) {
                 badgeColor = 'var(--success, #38C98A)';
-                badgeText = 'MATERIAL ADVANCE';
+                badgeText = 'STAGE ADVANCE';
                 ActionIcon = Play;
+              } else if (isArtwork) {
+                badgeColor = '#00C8D7';
+                badgeText = act === 'ARTWORK_APPROVED' ? 'ARTWORK APPROVED' : (e.metadata?.versionTag ? `ARTWORK ${e.metadata.versionTag}` : 'ARTWORK');
+                ActionIcon = FileText;
+              } else if (isSpecs) {
+                badgeColor = '#A855F7';
+                badgeText = act === 'SPECIFICATION_APPROVED' || act === 'SPEC_APPROVED_HEAD' ? 'SPEC APPROVED' : 'SPEC SHEET';
+                ActionIcon = CheckCircle2;
               } else if (isPM) {
                 badgeColor = 'var(--teal, #00C8D7)';
                 badgeText = 'PMCODE';
@@ -221,15 +234,19 @@ export default function ActivityStreamModal({
                 badgeColor = '#4F8CFF';
                 badgeText = 'PO UPDATE';
                 ActionIcon = ShoppingCart;
-              } else if (isSpecs) {
-                badgeColor = '#A855F7';
-                badgeText = e.action === 'SPEC_SIGNOFF' ? 'SPEC SIGNED' : 'SPECS UPDATE';
-                ActionIcon = CheckCircle2;
               }
 
               const timeFormatted = e.timestamp
                 ? new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                 : '';
+
+              const userName = e.user?.name || (typeof e.user === 'string' ? e.user : (e.by || e.userName || 'System'));
+              const userRole = e.user?.role || e.userRole || e.byRole || '';
+
+              const oldVal = e.oldValue !== undefined ? e.oldValue : e.metadata?.oldValue;
+              const newVal = e.newValue !== undefined ? e.newValue : e.metadata?.newValue;
+              const hasBeforeAfter = (oldVal !== undefined && oldVal !== null) || (newVal !== undefined && newVal !== null);
+              const reasonText = e.reason || e.metadata?.reason;
 
               return (
                 <div
@@ -271,10 +288,27 @@ export default function ActivityStreamModal({
                     </span>
                   </div>
 
-                  {/* PROJECT CONTEXT */}
-                  {e.projectName && (
-                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--teal)', lineHeight: 1.3 }}>
-                      {e.projectName} {e.fgCode ? `(${e.fgCode})` : ''}
+                  {/* PROJECT CONTEXT & STABLE ENTITY */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                    {e.projectName && (
+                      <div style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--teal)', lineHeight: 1.3 }}>
+                        {e.projectName} {e.fgCode ? `(${e.fgCode})` : ''}
+                      </div>
+                    )}
+                    {e.entityId && (
+                      <span style={{ fontSize: '8.5px', fontFamily: 'monospace', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '1px 4px', borderRadius: '3px' }}>
+                        {e.entityId}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* BEFORE / AFTER TRANSITION */}
+                  {hasBeforeAfter && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9.5px', background: 'rgba(0,0,0,0.3)', padding: '3px 8px', borderRadius: '4px', margin: '2px 0' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Previous:</span>
+                      <span style={{ color: '#F05D6C', textDecoration: 'line-through' }}>{String(oldVal ?? '—')}</span>
+                      <span style={{ color: 'var(--teal)' }}>➔</span>
+                      <span style={{ color: '#38C98A', fontWeight: 600 }}>{String(newVal ?? '—')}</span>
                     </div>
                   )}
 
@@ -296,6 +330,13 @@ export default function ActivityStreamModal({
                     </div>
                   )}
 
+                  {/* USER REASON */}
+                  {reasonText && (
+                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255,255,255,0.03)', padding: '2px 6px', borderRadius: '3px' }}>
+                      💬 Reason: &ldquo;{reasonText}&rdquo;
+                    </div>
+                  )}
+
                   {/* FOOTER ROW: USER & TIME */}
                   <div
                     style={{
@@ -309,9 +350,9 @@ export default function ActivityStreamModal({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <User size={10} style={{ opacity: 0.7 }} />
-                      <span>{e.user || e.userName || 'System'}</span>
-                      {e.userRole && (
-                        <span style={{ opacity: 0.6 }}>({e.userRole})</span>
+                      <span>{userName}</span>
+                      {userRole && (
+                        <span style={{ opacity: 0.6 }}>({userRole})</span>
                       )}
                     </div>
                     {timeFormatted && (

@@ -586,26 +586,48 @@ export default function DetailModal({ isOpen, project, onClose, initialTab = 'sp
                         </div>
 
                         {item.details && (
-                          <div style={{ fontSize: '11px', color: 'var(--text-main)', background: 'rgba(0, 0, 0, 0.2)', padding: '6px 10px', borderRadius: '5px', marginBottom: '8px', lineHeight: '1.4' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text-main)', background: 'rgba(0, 0, 0, 0.2)', padding: '6px 10px', borderRadius: '5px', marginBottom: '6px', lineHeight: '1.4' }}>
                             {item.details}
+                          </div>
+                        )}
+
+                        {/* PASS 5: BEFORE / AFTER VALUES */}
+                        {((item.oldValue !== undefined && item.oldValue !== null) || (item.newValue !== undefined && item.newValue !== null) || item.metadata?.oldValue !== undefined || item.metadata?.newValue !== undefined) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', background: 'rgba(0, 0, 0, 0.3)', padding: '4px 8px', borderRadius: '4px', marginBottom: '6px' }}>
+                            <span style={{ color: 'var(--text-muted)' }}>Previous:</span>
+                            <span style={{ color: '#F05D6C', textDecoration: 'line-through' }}>{String(item.oldValue ?? item.metadata?.oldValue ?? '—')}</span>
+                            <span style={{ color: 'var(--teal)' }}>➔</span>
+                            <span style={{ color: '#38C98A', fontWeight: '700' }}>{String(item.newValue ?? item.metadata?.newValue ?? '—')}</span>
+                          </div>
+                        )}
+
+                        {/* PASS 5: USER REASON */}
+                        {(item.reason || item.metadata?.reason) && (
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255, 255, 255, 0.03)', padding: '3px 8px', borderRadius: '4px', marginBottom: '6px' }}>
+                            💬 Reason: &ldquo;{item.reason || item.metadata?.reason}&rdquo;
                           </div>
                         )}
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '6px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ color: 'var(--text-main)', fontWeight: '700' }}>
-                              👤 Performed by: <span style={{ color: 'var(--cyan)' }}>{item.by}</span>
+                              👤 Performed by: <span style={{ color: 'var(--cyan)' }}>{item.user?.name || item.by || 'System'}</span>
                             </span>
-                            <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '3px', background: item.byRole === 'superadmin' ? 'rgba(239, 68, 68, 0.15)' : item.byRole === 'admin' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(20, 184, 166, 0.15)', color: item.byRole === 'superadmin' ? '#ef4444' : item.byRole === 'admin' ? '#a78bfa' : '#2dd4bf', fontWeight: '700' }}>
-                              {item.byRole ? item.byRole.toUpperCase() : 'USER'}
+                            <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '3px', background: (item.user?.role || item.byRole) === 'superadmin' ? 'rgba(239, 68, 68, 0.15)' : (item.user?.role || item.byRole) === 'admin' ? 'rgba(124, 58, 237, 0.15)' : 'rgba(20, 184, 166, 0.15)', color: (item.user?.role || item.byRole) === 'superadmin' ? '#ef4444' : (item.user?.role || item.byRole) === 'admin' ? '#a78bfa' : '#2dd4bf', fontWeight: '700' }}>
+                              {(item.user?.role || item.byRole) ? (item.user?.role || item.byRole).toUpperCase() : 'USER'}
                             </span>
                             {item.byDept && (
                               <span style={{ opacity: 0.75 }}>· {item.byDept}</span>
                             )}
+                            {item.entityId && (
+                              <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.05)', padding: '1px 5px', borderRadius: '3px' }}>
+                                {item.entityId}
+                              </span>
+                            )}
                           </div>
-                          {item.byEmail && (
+                          {(item.user?.email || item.byEmail) && (
                             <span style={{ fontFamily: 'monospace', opacity: 0.6, fontSize: '9.5px' }}>
-                              {item.byEmail}
+                              {item.user?.email || item.byEmail}
                             </span>
                           )}
                         </div>

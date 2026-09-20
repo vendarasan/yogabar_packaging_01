@@ -1,4 +1,4 @@
-const { STAGE_ORDER, PRINT_LEAD, getMaterialLeadTime } = require('./constants');
+const { STAGE_ORDER, PRINT_LEAD, getMaterialLeadTime, determineCPMIndex } = require('./constants');
 
 // ── Date Helpers ─────────────────────────────────────────────────
 function today() {
@@ -85,6 +85,30 @@ function syncProjectStage(p) {
   p.stage = STAGE_ORDER[minIdx];
 }
 
+function getProjectStage(p) {
+  if (!p) return 'Brief';
+  if (p.stage) return p.stage;
+  if (!p.materials || !p.materials.length) return 'Brief';
+  const minIdx = Math.min(...p.materials.map(m => stageIdx(m.stage || 'Brief')));
+  return STAGE_ORDER[minIdx >= 0 ? minIdx : 0] || 'Brief';
+}
+
+function getDaysLeft(p) {
+  if (!p || !p.targetLaunchDate) return null;
+  const targetMs = new Date(p.targetLaunchDate).getTime();
+  const todayMs = new Date(today()).getTime();
+  return Math.round((targetMs - todayMs) / (1000 * 60 * 60 * 24));
+}
+
+function getLTStatus(p) {
+  const days = getDaysLeft(p);
+  if (days === null) return 'N/A';
+  if (days < 0) return 'Late';
+  if (days <= 15) return 'Critical';
+  if (days <= 30) return 'Approaching';
+  return 'On Schedule';
+}
+
 function getArtworkCode(pmCode) {
   if (!pmCode || !String(pmCode).trim()) return 'AW-00000';
   const str = String(pmCode).trim();
@@ -161,7 +185,8 @@ function generateDefaultPMCode(materialType = '', idx = 0) {
 module.exports = {
   today, addDays, hashPass, genTempPass,
   calcMatMilestones, calcProjectMilestones, recalcMatMilestones,
-  stageIdx, syncProjectStage, getArtworkCode,
+  stageIdx, syncProjectStage, getProjectStage, getDaysLeft, getLTStatus, getArtworkCode,
+  determineCPMIndex, STAGE_ORDER,
   PM_CODE_PREFIXES, getPMPrefix, generateDefaultPMCode
 };
 

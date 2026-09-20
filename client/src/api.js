@@ -63,4 +63,74 @@ export const updateSpecInLibrary = (id, payload) => api.put(`/specs/library/${id
 export const deleteSpecFromLibrary = (id) => api.delete(`/specs/library/${id}`);
 export const applySpecToProject = (id, payload) => api.post(`/specs/library/${id}/apply`, payload);
 
+// ── Pass 7: Approvals, Tasks, Comments, Notifications, Risks & Search ──
+// Approvals
+export const getApprovals = (params) => api.get('/approvals', { params });
+export const getApprovalById = (id) => api.get(`/approvals/${id}`);
+export const requestApproval = (data) => api.post('/approvals', data);
+export const decideApproval = (id, data) => api.post(`/approvals/${id}/decide`, data);
+export const cancelApproval = (id) => api.post(`/approvals/${id}/cancel`);
+
+// Tasks
+export const getTasks = (params) => api.get('/tasks', { params });
+export const getTaskById = (id) => api.get(`/tasks/${id}`);
+export const createTask = (data) => api.post('/tasks', data);
+export const updateTask = (id, data) => api.put(`/tasks/${id}`, data);
+export const completeTask = (id) => api.post(`/tasks/${id}/complete`);
+export const deleteTask = (id) => api.delete(`/tasks/${id}`);
+
+// Comments & Mentions
+export const getComments = (params) => api.get('/comments', { params });
+export const addComment = (data) => api.post('/comments', data);
+export const deleteComment = (id) => api.delete(`/comments/${id}`);
+
+// Notifications & Preferences
+export const getNotifications = (params) => api.get('/notifications', { params });
+export const markNotificationRead = (id) => api.post(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () => api.post('/notifications/read-all');
+export const getNotificationPreferences = () => api.get('/notifications/preferences');
+export const updateNotificationPreferences = (data) => api.put('/notifications/preferences', data);
+
+// Project Risks & Functional Ownership
+export const getProjectRisks = (projectId) => api.get(`/projects/${projectId}/risks`);
+export const addProjectRisk = (projectId, data) => api.post(`/projects/${projectId}/risks`, data);
+export const updateProjectRisk = (projectId, riskId, data) => api.put(`/projects/${projectId}/risks/${riskId}`, data);
+export const deleteProjectRisk = (projectId, riskId) => api.delete(`/projects/${projectId}/risks/${riskId}`);
+export const updateProjectOwnership = (projectId, data) => api.put(`/projects/${projectId}/ownership`, data);
+
+// Global Universal Search
+export const globalSearch = (q) => api.get('/search', { params: { q } });
+
+// ── Pass 8: Enterprise Reporting, Data Quality, Import & Webhooks ──
+// Reporting Engine
+export const getProjectReviewReport = (projectId) => api.get(`/reports/project-review/${projectId}`);
+export const getManagementReport = () => api.get('/reports/management');
+export const getSupplierPerformanceReport = () => api.get('/reports/suppliers');
+export const getStageAnalyticsReport = () => api.get('/reports/stages');
+
+// Data Quality & Anomaly Detection
+export const getDataQualityAudit = () => api.get('/data-quality/audit');
+
+// Controlled Import
+export const validateImport = (records) => api.post('/import/validate', { records });
+export const commitImport = (records) => api.post('/import/commit', { records });
+
+// Webhook & Integration Platform
+export const getWebhooks = () => api.get('/webhooks');
+export const createWebhook = (data) => api.post('/webhooks', data);
+export const getWebhookById = (id) => api.get(`/webhooks/${id}`);
+export const updateWebhook = (id, data) => api.put(`/webhooks/${id}`, data);
+export const deleteWebhook = (id) => api.delete(`/webhooks/${id}`);
+export const getWebhookDeliveries = (id, params) => api.get(`/webhooks/${id}/deliveries`, { params });
+export const testWebhook = (id) => api.post(`/webhooks/${id}/test`);
+export const retryWebhookDelivery = (deliveryId) => api.post(`/webhooks/deliveries/${deliveryId}/retry`);
+
+// Packaging Formats (Master Data)
+export const getPackagingFormats = (params) => api.get('/packaging-formats', { params });
+export const getPackagingFormatById = (id) => api.get(`/packaging-formats/${id}`);
+export const createPackagingFormat = (data) => api.post('/packaging-formats', data);
+export const updatePackagingFormat = (id, data) => api.put(`/packaging-formats/${id}`, data);
+export const deletePackagingFormat = (id) => api.delete(`/packaging-formats/${id}`);
+
 export default api;
+

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MAT_TYPES, PRINT_TYPES, isPouch, getMaterialLeadTime, POUCH_PRINT_LEAD, getSpecFields } from '../../constants';
 import { getDefaultSpecSheet, generateDefaultPMCode, getArtworkCode, getPMPrefix, extractPMNumber } from '../../specTemplates';
 import { today, calcProjectMilestones, fmt } from '../../utils';
+import { getPackagingFormats } from '../../api';
 
 export default function AddProjectPage({ onCancel, onSave, editProject }) {
   const [fgCode, setFgCode] = useState('');
@@ -17,10 +18,25 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
   const [projectCategory, setProjectCategory] = useState('NPD');
 
   const [materials, setMaterials] = useState([
-    { name: '', pmCode: '', clubbedCodes: '', type: MAT_TYPES[0], printType: 'Not Applicable', supplier: '', specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate: today() }
+    { name: '', pmCode: '', clubbedCodes: '', packagingFormatId: 'PF-01', type: MAT_TYPES[0], printType: 'Not Applicable', supplier: '', specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate: today() }
   ]);
+  const [packagingFormats, setPackagingFormats] = useState([]);
   const [expandedSpecRows, setExpandedSpecRows] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    getPackagingFormats()
+      .then(res => {
+        if (isMounted && res.data?.formats) {
+          setPackagingFormats(res.data.formats);
+        }
+      })
+      .catch(err => {
+        console.warn('Could not load packaging formats from API:', err);
+      });
+    return () => { isMounted = false; };
+  }, []);
 
   const estReadyDate = (briefDate && materials.length) ? calcProjectMilestones(briefDate, materials)?.Connectivity : null;
 
@@ -38,9 +54,11 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       setProjectType(editProject.projectType || 'Regular');
       setProjectCategory(editProject.projectCategory || 'NPD');
       setMaterials(editProject.materials ? editProject.materials.map((m, idx) => ({
+        id: m.id || `${editProject.id}-mat-${idx}`,
         name: m.name,
         pmCode: m.pmCode || '',
         clubbedCodes: m.clubbedCodes || m.specSheet?.docHeader?.clubbedCodes || '',
+        packagingFormatId: m.packagingFormatId || m.packaging_format_id || m.formatId || '',
         type: m.type,
         printType: m.printType || (isPouch(m.type) ? 'Digital Print' : 'Not Applicable'),
         supplier: m.supplier || '',
@@ -53,7 +71,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
         artworkFileName: m.specSheet?.artworkFiles?.[0]?.name || '',
         variants: m.variants || m.specSheet?.variants || [],
         briefDate: m.briefDate || m.milestones?.Brief || editProject.briefDate || today()
-      })) : [{ name: '', pmCode: '', clubbedCodes: '', type: MAT_TYPES[0], printType: 'Not Applicable', supplier: '', customLeadTime: '', poStatus: 'RFQ in progress', poNumber: '', specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate: today() }]);
+      })) : [{ name: '', pmCode: '', clubbedCodes: '', packagingFormatId: 'PF-01', type: MAT_TYPES[0], printType: 'Not Applicable', supplier: '', customLeadTime: '', poStatus: 'RFQ in progress', poNumber: '', specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate: today() }]);
     } else {
       setFgCode('');
       setProjectName('');
@@ -66,7 +84,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       setDescription('');
       setProjectType('Regular');
       setProjectCategory('NPD');
-      setMaterials([{ name: '', pmCode: '', clubbedCodes: '', type: MAT_TYPES[0], printType: 'Not Applicable', supplier: '', customLeadTime: '', poStatus: 'RFQ in progress', poNumber: '', specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate: today() }]);
+      setMaterials([{ name: '', pmCode: '', clubbedCodes: '', packagingFormatId: 'PF-01', type: MAT_TYPES[0], printType: 'Not Applicable', supplier: '', customLeadTime: '', poStatus: 'RFQ in progress', poNumber: '', specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate: today() }]);
     }
   }, [editProject]);
 
@@ -76,8 +94,11 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
   };
 
   const handleAddMaterialRow = () => {
+    const defaultFmt = packagingFormats[0] || null;
+    const defaultType = defaultFmt ? defaultFmt.name : MAT_TYPES[0];
+    const defaultFmtId = defaultFmt ? defaultFmt.id : 'PF-01';
     setMaterials(prev => [...prev, {
-      name: '', pmCode: '', clubbedCodes: '', type: MAT_TYPES[0], printType: 'Not Applicable',
+      name: '', pmCode: '', clubbedCodes: '', packagingFormatId: defaultFmtId, type: defaultType, printType: 'Not Applicable',
       supplier: '', customLeadTime: '', poStatus: 'RFQ in progress', poNumber: '',
       specs: {}, specSheet: null, artworkUrl: '', artworkFileName: '', variants: [], briefDate
     }]);
@@ -92,17 +113,24 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
     setMaterials(prev => {
       const copy = [...prev];
       const updated = { ...copy[idx], [field]: val };
-      if (field === 'type') {
-        const newPrefix = getPMPrefix(val);
+      if (field === 'packagingFormatId' || field === 'type') {
+        const fmt = packagingFormats.find(f => f.id === val || f.name === val);
+        const formatName = fmt ? fmt.name : val;
+        const formatId = fmt ? fmt.id : (copy[idx].packagingFormatId || 'PF-24');
+        updated.packagingFormatId = formatId;
+        updated.type = formatName;
+
+        const newPrefix = fmt?.codePrefix || getPMPrefix(formatName);
         const existingNum = extractPMNumber(copy[idx].pmCode, copy[idx].type);
         if (existingNum) {
           updated.pmCode = `${newPrefix}${existingNum}`;
         }
-        if (isPouch(val) && (!updated.printType || updated.printType === 'Not Applicable')) {
+        const isFmtPouch = fmt ? fmt.isPouch : isPouch(formatName);
+        if (isFmtPouch && (!updated.printType || updated.printType === 'Not Applicable')) {
           updated.printType = 'Digital Print';
         }
         if (updated.specSheet) {
-          const newSheet = getDefaultSpecSheet(val, projectName.trim(), skuSize.trim(), idx);
+          const newSheet = getDefaultSpecSheet(formatName, projectName.trim(), skuSize.trim(), idx);
           newSheet.docHeader.itemCode = updated.pmCode || newSheet.docHeader.itemCode;
           newSheet.docHeader.clubbedCodes = updated.clubbedCodes || '';
           newSheet.general.preferredSupplier = updated.supplier || '';
@@ -361,6 +389,13 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
     if (!briefDate) { alert('Brief Date is required'); return; }
 
     const validMats = materials.filter(m => m.name.trim()).map((m, idx) => {
+      let formatId = m.packagingFormatId || m.packaging_format_id || m.formatId;
+      if (!formatId && packagingFormats.length > 0) {
+        const matched = packagingFormats.find(f => f.name === m.type || f.id === m.type);
+        if (matched) formatId = matched.id;
+      }
+      if (!formatId) formatId = 'PF-24';
+
       const pmCode = m.pmCode ? m.pmCode.trim() : generateDefaultPMCode(m.type, idx);
       const clubbedCodes = m.clubbedCodes ? m.clubbedCodes.trim() : '';
       const artworkCode = getArtworkCode(pmCode);
@@ -386,9 +421,18 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       if (m.variants && m.variants.length > 0) specSheet.variants = m.variants;
 
       return {
-        ...m, briefDate: m.briefDate || briefDate, pmCode, clubbedCodes, artworkCode,
+        ...m,
+        id: m.id || `${editProject ? editProject.id : 'proj'}-mat-${idx}`,
+        packagingFormatId: formatId,
+        packaging_format_id: formatId,
+        formatId: formatId,
+        briefDate: m.briefDate || briefDate,
+        pmCode,
+        clubbedCodes,
+        artworkCode,
         artworkUrl: m.artworkUrl || (specSheet.artworkFiles?.[0]?.url || ''),
-        variants: specSheet.variants || [], specSheet
+        variants: specSheet.variants || [],
+        specSheet
       };
     });
 
@@ -684,10 +728,22 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                             />
                           </td>
                           <td>
-                            <select className="modern-form-select" value={m.type} onChange={e => handleMatChange(idx, 'type', e.target.value)}>
-                              {MAT_TYPES.map(t => (
-                                <option key={t} value={t} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>{t}</option>
-                              ))}
+                            <select
+                              className="modern-form-select"
+                              value={m.packagingFormatId || packagingFormats.find(f => f.name === m.type)?.id || m.type}
+                              onChange={e => handleMatChange(idx, 'packagingFormatId', e.target.value)}
+                            >
+                              {packagingFormats.length > 0 ? (
+                                packagingFormats.map(fmt => (
+                                  <option key={fmt.id} value={fmt.id} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>
+                                    {fmt.name} ({fmt.id})
+                                  </option>
+                                ))
+                              ) : (
+                                MAT_TYPES.map(t => (
+                                  <option key={t} value={t} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>{t}</option>
+                                ))
+                              )}
                             </select>
                           </td>
                           <td>

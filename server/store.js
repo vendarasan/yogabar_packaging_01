@@ -11,6 +11,14 @@ const store = {
   projects: [],      // Array of project objects
   advanceLogs: [],   // Array of log entries
   specLibrary: [],   // Array of converted/saved Spec Library objects
+  approvals: [],     // Array of approval objects
+  tasks: [],         // Array of structured action items
+  comments: [],      // Array of contextual comments
+  notifications: [], // Array of notifications
+  userPreferences: {}, // { email: preferences }
+  webhooks: [],      // Array of webhook configurations
+  webhookDeliveries: [], // Array of webhook delivery logs
+  aiActivityLogs: [], // Array of AI activity audit logs
   projCounter: 1,
 };
 
@@ -31,6 +39,14 @@ function loadLocalStore() {
       if (Array.isArray(data.advanceLogs) && data.advanceLogs.length > 0) {
         store.advanceLogs = data.advanceLogs;
       }
+      if (Array.isArray(data.approvals)) store.approvals = data.approvals;
+      if (Array.isArray(data.tasks)) store.tasks = data.tasks;
+      if (Array.isArray(data.comments)) store.comments = data.comments;
+      if (Array.isArray(data.notifications)) store.notifications = data.notifications;
+      if (data.userPreferences && typeof data.userPreferences === 'object') store.userPreferences = data.userPreferences;
+      if (Array.isArray(data.webhooks)) store.webhooks = data.webhooks;
+      if (Array.isArray(data.webhookDeliveries)) store.webhookDeliveries = data.webhookDeliveries;
+      if (Array.isArray(data.aiActivityLogs)) store.aiActivityLogs = data.aiActivityLogs;
     }
   } catch (err) {
     console.warn('⚠️ [Store] Could not load local_store.json:', err.message);
@@ -47,6 +63,14 @@ function saveLocalStore() {
       specLibrary: store.specLibrary || [],
       projects: store.projects || [],
       advanceLogs: (store.advanceLogs || []).slice(0, 200),
+      approvals: store.approvals || [],
+      tasks: store.tasks || [],
+      comments: store.comments || [],
+      notifications: (store.notifications || []).slice(0, 500),
+      userPreferences: store.userPreferences || {},
+      webhooks: store.webhooks || [],
+      webhookDeliveries: (store.webhookDeliveries || []).slice(0, 500),
+      aiActivityLogs: (store.aiActivityLogs || []).slice(0, 500),
       savedAt: new Date().toISOString()
     };
     fs.writeFileSync(localStorePath, JSON.stringify(data, null, 2), 'utf8');

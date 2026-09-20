@@ -1194,16 +1194,16 @@ tr:last-child td {
   border-bottom: none;
 }
 
-/* Subtle row hover */
-:not(.spec-sheet-page) tbody tr:hover td {
+/* Subtle row hover (scoped to dashboard summary table only) */
+.dashboard-summary-table tbody tr:hover td {
   background: rgba(255, 255, 255, 0.03) !important;
 }
 
-:not(.spec-sheet-page) tbody tr:nth-child(even) td {
+.dashboard-summary-table tbody tr:nth-child(even) td {
   background: rgba(255, 255, 255, 0.015);
 }
 
-:not(.spec-sheet-page) tbody tr:nth-child(even):hover td {
+.dashboard-summary-table tbody tr:nth-child(even):hover td {
   background: rgba(255, 255, 255, 0.03) !important;
 }
 
@@ -1401,6 +1401,95 @@ tr.row-lt-late > td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ── UNIVERSAL MODAL OVERLAYS & CONTAINERS (Pass 7 & 8) ───────────── */
+.modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(3, 14, 16, 0.84) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  z-index: 1100 !important;
+  pointer-events: auto !important;
+}
+
+.modal-content,
+.modal-box {
+  background: var(--card-bg, #0B2529) !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12)) !important;
+  border-radius: var(--r-xl, 14px) !important;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0, 200, 215, 0.15) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  position: relative !important;
+  max-width: 95vw !important;
+  color: var(--text-main, #F2F7F7) !important;
+  pointer-events: auto !important;
+  animation: modalFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-header {
+  background: var(--bg-sidebar, #06171A) !important;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08)) !important;
+  box-sizing: border-box !important;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Compatibility for modal overlay wrappers using fixed inset-0 */
+.fixed.inset-0 {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(3, 14, 16, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  z-index: 1200 !important;
+  overflow-y: auto !important;
+  pointer-events: auto !important;
+}
+
+.fixed.inset-0 > div:first-child {
+  background: var(--card-bg, #0B2529) !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12)) !important;
+  border-radius: var(--r-xl, 14px) !important;
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0, 200, 215, 0.15) !important;
+  box-sizing: border-box !important;
+  max-width: 95vw !important;
+  color: var(--text-main, #F2F7F7) !important;
+  pointer-events: auto !important;
 }
 
 .modal {
@@ -1789,7 +1878,9 @@ option:checked {
 /* ── TRACKER TABLE & MATERIAL BREAKDOWN ───────────────────────────── */
 .modern-mat-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--card-bg, #0B2529);
   text-align: left;
 }
 
@@ -1798,7 +1889,7 @@ option:checked {
 }
 
 .modern-mat-table th {
-  background: var(--card-bg);
+  background: var(--card-bg, #0B2529);
   padding: 10px 12px;
   font-size: 11px;
   font-weight: 600;
@@ -1816,6 +1907,7 @@ option:checked {
   vertical-align: middle;
   box-sizing: border-box;
   font-size: 13px;
+  background: var(--card-bg, #0B2529);
 }
 
 .modern-mat-table tr:last-child td {
@@ -1840,7 +1932,7 @@ option:checked {
 /* ── PACKAGING MATERIALS BREAKDOWN COMPACT SECTION (SIMPLIFIED) ───────── */
 .pkg-breakdown-section {
   padding: 10px 16px 12px;
-  background: rgba(8, 26, 30, 0.6);
+  background: var(--bg-sidebar, #06171A);
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
@@ -2607,68 +2699,334 @@ option:checked {
   background: rgba(240, 93, 108, 0.1);
 }
 
+/* ── PLATFORM OPERATIONS ENTERPRISE DROPDOWN ──────────────────────── */
+.platform-ops-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 330px;
+  background: rgba(7, 26, 29, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 200, 215, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 24px 48px -8px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(0, 200, 215, 0.15), 0 8px 24px -4px rgba(0, 200, 215, 0.1);
+  padding: 0;
+  z-index: 1000;
+  overflow: hidden;
+  animation: platformDropdownIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes platformDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.platform-ops-header {
+  padding: 12px 14px 10px;
+  background: rgba(4, 18, 20, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.platform-ops-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted, #8ea6a9);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.platform-ops-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 200, 215, 0.12);
+  color: var(--teal, #00d4c8);
+  border: 1px solid rgba(0, 200, 215, 0.25);
+  letter-spacing: 0.04em;
+}
+
+.platform-ops-sub {
+  font-size: 11px;
+  color: var(--text-muted, #8ea6a9);
+  margin-top: 3px;
+}
+
+.platform-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00d4c8;
+  box-shadow: 0 0 8px #00d4c8;
+  display: inline-block;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.platform-ops-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.platform-ops-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.platform-ops-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(0, 200, 215, 0.15);
+  transform: translateX(2px);
+}
+
+.platform-ops-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.platform-ops-item:hover .platform-ops-icon-box {
+  transform: scale(1.06);
+  box-shadow: 0 0 12px currentColor;
+}
+
+.platform-ops-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.platform-ops-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.platform-ops-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main, #F2F7F7);
+}
+
+.platform-tag {
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.platform-ops-desc {
+  font-size: 10.5px;
+  color: var(--text-muted, #8ea6a9);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.platform-ops-arrow {
+  color: var(--text-muted, #8ea6a9);
+  opacity: 0.4;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.platform-ops-item:hover .platform-ops-arrow {
+  opacity: 1;
+  color: var(--teal, #00d4c8);
+  transform: translateX(2px);
+}
+
+.platform-ops-footer {
+  padding: 8px 14px;
+  background: rgba(4, 18, 20, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted, #8ea6a9);
+}
+
+.platform-ops-footer-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #38c98a;
+  display: inline-block;
+}
+
 /* ── TRACKER TABLE STICKY COLUMNS (PROJECT LEVEL) ─────────────────── */
 .modern-mat-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  background-color: #0B2529 !important;
+  background: var(--card-bg, #0B2529) !important;
   box-shadow: 0 1px 0 var(--border-color);
 }
 
+.modern-mat-table thead th:not([class*="sticky-proj-th"]) {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  background-color: #0B2529 !important;
+  background: var(--card-bg, #0B2529) !important;
+}
+
 .modern-mat-table th.sticky-proj-th-expand {
-  position: sticky;
-  left: 0;
-  top: 0;
-  z-index: 12 !important;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  left: 0 !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background-color: #0B2529 !important;
+  background: var(--card-bg, #0B2529) !important;
 }
 
 .modern-mat-table th.sticky-proj-th-fg {
-  position: sticky;
-  left: 40px;
-  top: 0;
-  z-index: 12 !important;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  left: 40px !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background-color: #0B2529 !important;
+  background: var(--card-bg, #0B2529) !important;
 }
 
 .modern-mat-table th.sticky-proj-th-name {
-  position: sticky;
-  left: 170px;
-  top: 0;
-  z-index: 12 !important;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  left: 170px !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  background-color: #0B2529 !important;
+  background: var(--card-bg, #0B2529) !important;
   border-right: 1px solid var(--border-color);
   box-shadow: 2px 1px 6px rgba(0, 0, 0, 0.35);
 }
 
+.modern-mat-table tbody td:not([class*="sticky-proj-td"]) {
+  position: static !important;
+  z-index: auto !important;
+}
+
 .modern-mat-table td.sticky-proj-td-expand {
-  position: sticky;
-  left: 0;
-  z-index: 4;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 30 !important;
+  background-color: #0B2529 !important;
+  background: #0B2529 !important;
+  background-clip: border-box !important;
 }
 
 .modern-mat-table td.sticky-proj-td-fg {
-  position: sticky;
-  left: 40px;
-  z-index: 4;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  left: 40px !important;
+  z-index: 30 !important;
+  background-color: #0B2529 !important;
+  background: #0B2529 !important;
+  background-clip: border-box !important;
 }
 
 .modern-mat-table td.sticky-proj-td-name {
-  position: sticky;
-  left: 170px;
-  z-index: 4;
-  background: var(--card-bg) !important;
+  position: sticky !important;
+  left: 170px !important;
+  z-index: 30 !important;
+  background-color: #0B2529 !important;
+  background: #0B2529 !important;
+  background-clip: border-box !important;
   border-right: 1px solid var(--border-color);
   box-shadow: 2px 0 6px rgba(0, 0, 0, 0.3);
 }
 
-.modern-mat-table tr:hover td.sticky-proj-td-expand,
-.modern-mat-table tr:hover td.sticky-proj-td-fg,
-.modern-mat-table tr:hover td.sticky-proj-td-name {
-  background: var(--surface-secondary) !important;
+/* Opaque impenetrable pseudo-element backing for sticky cells */
+.modern-mat-table td.sticky-proj-td-expand::before,
+.modern-mat-table td.sticky-proj-td-fg::before,
+.modern-mat-table td.sticky-proj-td-name::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #0B2529;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.modern-mat-table tbody tr td.sticky-proj-td-expand,
+.modern-mat-table tbody tr td.sticky-proj-td-fg,
+.modern-mat-table tbody tr td.sticky-proj-td-name,
+.modern-mat-table tbody tr:nth-child(even) td.sticky-proj-td-expand,
+.modern-mat-table tbody tr:nth-child(even) td.sticky-proj-td-fg,
+.modern-mat-table tbody tr:nth-child(even) td.sticky-proj-td-name {
+  background: #0B2529 !important;
+  background-color: #0B2529 !important;
+}
+
+.modern-mat-table tbody tr:hover td {
+  background: var(--surface-secondary, #0D2D32);
+}
+
+.modern-mat-table tbody tr:hover td.sticky-proj-td-expand,
+.modern-mat-table tbody tr:hover td.sticky-proj-td-fg,
+.modern-mat-table tbody tr:hover td.sticky-proj-td-name,
+.modern-mat-table tbody tr:nth-child(even):hover td.sticky-proj-td-expand,
+.modern-mat-table tbody tr:nth-child(even):hover td.sticky-proj-td-fg,
+.modern-mat-table tbody tr:nth-child(even):hover td.sticky-proj-td-name {
+  background: #0D2D32 !important;
+  background-color: #0D2D32 !important;
+}
+
+.modern-mat-table tbody tr:hover td.sticky-proj-td-expand::before,
+.modern-mat-table tbody tr:hover td.sticky-proj-td-fg::before,
+.modern-mat-table tbody tr:hover td.sticky-proj-td-name::before,
+.modern-mat-table tbody tr:nth-child(even):hover td.sticky-proj-td-expand::before,
+.modern-mat-table tbody tr:nth-child(even):hover td.sticky-proj-td-fg::before,
+.modern-mat-table tbody tr:nth-child(even):hover td.sticky-proj-td-name::before {
+  background-color: #0D2D32 !important;
+}
+
+.modern-mat-table tr.tracker-edit-row td {
+  background: #0d2e33;
+}
+
+.modern-mat-table tr.tracker-edit-row td.sticky-proj-td-expand,
+.modern-mat-table tr.tracker-edit-row td.sticky-proj-td-fg,
+.modern-mat-table tr.tracker-edit-row td.sticky-proj-td-name {
+  background: #0d2e33 !important;
+  background-color: #0d2e33 !important;
+}
+
+.modern-mat-table tr.tracker-edit-row td.sticky-proj-td-expand::before,
+.modern-mat-table tr.tracker-edit-row td.sticky-proj-td-fg::before,
+.modern-mat-table tr.tracker-edit-row td.sticky-proj-td-name::before {
+  background-color: #0d2e33 !important;
 }
 
 .mat-act-specs.spec-pending {

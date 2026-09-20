@@ -5,15 +5,17 @@ const { authMiddleware, requireUpdater, requireAdmin } = require('../middleware/
 const { SpecLibraryRepo, ProjectsRepo, LogsRepo } = require('../db/repository');
 const { isDbAvailable } = require('../db');
 const { convertPdfToNewSpecFormat, convertTextToSpecSheet } = require('../utils/specPdfParser');
+const { sanitizeFilename, validatePdfMagicBytes, MAX_FILE_SIZE_BYTES } = require('../middleware/uploadSecurity');
 
 // ── 1. POST /api/specs/convert-pdf — Convert uploaded PDF to new spec format
 router.post('/convert-pdf', authMiddleware, requireUpdater, async (req, res) => {
   try {
     const { fileData, fileName = 'spec.pdf', rawText } = req.body;
+    const safeFileName = sanitizeFilename(fileName);
 
     // Case A: User supplied raw text directly
     if (rawText && typeof rawText === 'string') {
-      const specSheet = convertTextToSpecSheet(rawText, fileName, fileData || null);
+      const specSheet = convertTextToSpecSheet(rawText, safeFileName, fileData || null);
       return res.json({
         success: true,
         specSheet,
@@ -41,7 +43,19 @@ router.post('/convert-pdf', authMiddleware, requireUpdater, async (req, res) => 
       return res.status(400).json({ error: 'Invalid or empty PDF file payload.' });
     }
 
-    const conversion = await convertPdfToNewSpecFormat(pdfBuffer, fileName, fileData);
+    if (pdfBuffer.length > MAX_FILE_SIZE_BYTES) {
+      return res.status(400).json({ error: 'File size exceeds the 50MB limit.', code: 'FILE_TOO_LARGE' });
+    }
+
+    // Magic byte verification (%PDF-)
+    if (!validatePdfMagicBytes(pdfBuffer)) {
+      return res.status(400).json({
+        error: 'Uploaded file is not a valid PDF document (magic byte signature mismatch).',
+        code: 'INVALID_PDF_SIGNATURE'
+      });
+    }
+
+    const conversion = await convertPdfToNewSpecFormat(pdfBuffer, safeFileName, fileData);
 
     return res.json(conversion);
   } catch (err) {
@@ -57,13 +71,34 @@ router.get('/library', authMiddleware, async (req, res) => {
       const dbSpecs = await SpecLibraryRepo.getAll();
       if (dbSpecs && dbSpecs.length > 0) {
         store.specLibrary = dbSpecs;
-        return res.json({ specs: dbSpecs });
       }
     } catch (err) {
       console.warn('[SpecLibrary] DB query failed, falling back to local store:', err.message);
     }
   }
-  return res.json({ specs: store.specLibrary || [] });
+  const allSpecs = store.specLibrary || [];
+
+  const page = parseInt(req.query.page, 10);
+  const limit = parseInt(req.query.limit, 10);
+  if (!isNaN(page) && page > 0 && !isNaN(limit) && limit > 0) {
+    const total = allSpecs.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const startIndex = (page - 1) * limit;
+    const paginated = allSpecs.slice(startIndex, startIndex + limit);
+    return res.json({
+      specs: paginated,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
+  }
+
+  return res.json({ specs: allSpecs });
 });
 
 // ── 3. POST /api/specs/library — Save a converted spec into the Spec Library

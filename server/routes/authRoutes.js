@@ -6,6 +6,14 @@ const { hashPass, genTempPass } = require('../utils');
 const { SUPERADMIN } = require('../constants');
 const { authMiddleware, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const { UsersRepo, SessionsRepo } = require('../db/repository');
+const { authRateLimiter } = require('../middleware/rateLimiter');
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  secure: process.env.NODE_ENV === 'production'
+};
 
 // GET /api/auth/me — restore session
 router.get('/me', authMiddleware, (req, res) => {
@@ -13,7 +21,7 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimiter, async (req, res) => {
   const { email: rawEmail, password } = req.body;
   if (!rawEmail || !password) return res.status(400).json({ error: 'Email and password required' });
   const email = rawEmail.trim().toLowerCase();
@@ -23,7 +31,7 @@ router.post('/login', async (req, res) => {
   if (isSuperAdminEmail) {
     if (password !== SUPERADMIN.pass) return res.status(401).json({ error: 'Incorrect admin password' });
     const token = '__superadmin__';
-    res.cookie('pkg_session', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('pkg_session', token, COOKIE_OPTIONS);
     return res.json({
       user: {
         email: SUPERADMIN.email || 'alexsander@company.com',
@@ -65,7 +73,7 @@ router.post('/login', async (req, res) => {
   store.sessions[token] = email;
   await SessionsRepo.create(token, email).catch(() => {});
 
-  res.cookie('pkg_session', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('pkg_session', token, COOKIE_OPTIONS);
   res.json({
     user: {
       email,
@@ -83,7 +91,7 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/signup
-router.post('/signup', async (req, res) => {
+router.post('/signup', authRateLimiter, async (req, res) => {
   const { name, email: rawEmail, password, confirmPassword } = req.body;
   if (!name || !rawEmail || !password) return res.status(400).json({ error: 'All fields required' });
   const email = rawEmail.trim().toLowerCase();
@@ -123,7 +131,7 @@ router.post('/signup', async (req, res) => {
   store.sessions[token] = email;
   await SessionsRepo.create(token, email).catch(() => {});
 
-  res.cookie('pkg_session', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('pkg_session', token, COOKIE_OPTIONS);
   res.json({
     user: {
       email,
@@ -146,12 +154,16 @@ router.post('/logout', async (req, res) => {
     delete store.sessions[token];
     await SessionsRepo.delete(token).catch(() => {});
   }
-  res.clearCookie('pkg_session');
+  res.clearCookie('pkg_session', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  });
   res.json({ ok: true });
 });
 
 // POST /api/auth/forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authRateLimiter, async (req, res) => {
   const { email: rawEmail } = req.body;
   if (!rawEmail) return res.status(400).json({ error: 'Email required' });
   const email = rawEmail.trim().toLowerCase();

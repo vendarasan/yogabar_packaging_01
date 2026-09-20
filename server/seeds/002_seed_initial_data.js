@@ -11,7 +11,12 @@ async function seedInitialData() {
     ON CONFLICT (key) DO NOTHING
   `);
 
-  // 2. Check if projects already exist
+  // 2. Check if projects already exist or if sample projects should be skipped
+  if (process.env.SEED_SAMPLE_PROJECTS !== 'true') {
+    console.log('   ℹ️ Skipping sample project seed (SEED_SAMPLE_PROJECTS is not set to true).');
+    return;
+  }
+
   const existingRes = await query('SELECT COUNT(*) AS count FROM projects');
   const count = parseInt(existingRes.rows[0].count, 10);
 

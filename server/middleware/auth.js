@@ -1,6 +1,7 @@
 const store = require('../store');
 const { SUPERADMIN } = require('../constants');
 const { SessionsRepo, UsersRepo } = require('../db/repository');
+const { getPermissionsForRole } = require('./permissions');
 
 async function authMiddleware(req, res, next) {
   let token = req.cookies && req.cookies.pkg_session;
@@ -20,7 +21,8 @@ async function authMiddleware(req, res, next) {
       department: SUPERADMIN.department || 'Global Packaging Leadership',
       mobile: SUPERADMIN.mobile || '+91 98765 43210',
       avatar: SUPERADMIN.avatar || '',
-      color: SUPERADMIN.color || '#ef4444'
+      color: SUPERADMIN.color || '#ef4444',
+      permissions: getPermissionsForRole('superadmin')
     };
     return next();
   }
@@ -68,7 +70,10 @@ async function authMiddleware(req, res, next) {
       department: user.department || '',
       mobile: user.mobile || '',
       avatar: user.avatar || '',
-      color: user.color
+      color: user.color,
+      supplierName: user.supplierName || null,
+      organizationId: user.organizationId || 'org-yogabar-main',
+      permissions: getPermissionsForRole(user.role)
     };
     next();
   } catch (err) {
@@ -101,6 +106,93 @@ function requireUpdater(req, res, next) {
   next();
 }
 
-const requireEditor = requireUpdater;
+/**
+ * Filter and sanitize project representation for external supplier users.
+ * Strips internal risks, internal comments, and unauthorized components.
+ */
+function filterProjectForSupplier(project, supplierName) {
+  if (!project) return null;
+  if (!supplierName) return null;
 
-module.exports = { authMiddleware, requireSuperAdmin, requireAdmin, requireUpdater, requireEditor };
+  const suppLower = supplierName.toLowerCase().trim();
+  const projSuppMatches = (project.supplier || '').toLowerCase().trim() === suppLower;
+  const authorizedMats = (project.materials || []).filter(m =>
+    (m.supplier || project.supplier || '').toLowerCase().trim() === suppLower
+  );
+
+  if (!projSuppMatches && authorizedMats.length === 0) {
+    return null;
+  }
+
+  return {
+    id: project.id,
+    projectName: project.projectName,
+    fgCode: project.fgCode,
+    skuSize: project.skuSize || project.grammage,
+    projectCategory: project.projectCategory,
+    projectType: project.projectType,
+    stage: project.stage,
+    status: project.status,
+    supplier: supplierName,
+    briefDate: project.briefDate,
+    targetLaunchDate: project.targetLaunchDate,
+    materials: authorizedMats.map(m => ({
+      id: m.id,
+      name: m.name,
+      type: m.type,
+      pmCode: m.pmCode,
+      artworkCode: m.artworkCode,
+      supplier: m.supplier || project.supplier,
+      stage: m.stage,
+      poStatus: m.poStatus,
+      poNumber: m.poNumber,
+      artworkApproved: m.artworkApproved,
+      artworkStatus: m.artworkStatus,
+      specSignoff: m.specSignoff,
+      specSheet: m.specSheet ? {
+        dimensions: m.specSheet.dimensions,
+        technicalDetails: m.specSheet.technicalDetails,
+        governance: m.specSheet.governance
+      } : null,
+      artworkVersions: (m.artworkVersions || []).map(v => ({
+        version: v.version,
+        filename: v.filename,
+        uploadedAt: v.uploadedAt,
+        status: v.status
+      }))
+    })),
+    // Completely redact internal governance & financial items
+    risks: [],
+    comments: '',
+    auditTrail: []
+  };
+}
+
+/**
+ * Middleware ensuring supplier users cannot access unauthorized project details.
+ */
+function requireSupplierScope(req, res, next) {
+  if (!req.user || req.user.role !== 'supplier') {
+    return next();
+  }
+
+  if (!req.user.supplierName) {
+    return res.status(403).json({ error: 'Access Denied: Supplier user has no assigned supplier organization' });
+  }
+
+  next();
+}
+
+const requireEditor = requireUpdater;
+const requireAuth = authMiddleware;
+
+module.exports = {
+  authMiddleware,
+  requireAuth,
+  requireSuperAdmin,
+  requireAdmin,
+  requireUpdater,
+  requireEditor,
+  filterProjectForSupplier,
+  requireSupplierScope
+};

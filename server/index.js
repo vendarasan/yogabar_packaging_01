@@ -6,11 +6,24 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const { hashPass } = require('./utils');
 const { SEED_USERS } = require('./constants');
+const { errorHandler } = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
 
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const logRoutes = require('./routes/logRoutes');
 const specRoutes = require('./routes/specRoutes');
+const approvalRoutes = require('./routes/approvalRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+const commentRoutes = require('./routes/commentRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const searchRoutes = require('./routes/searchRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const dataQualityRoutes = require('./routes/dataQualityRoutes');
+const importRoutes = require('./routes/importRoutes');
+const packagingFormatRoutes = require('./routes/packagingFormatRoutes');
+const apiDocsRoutes = require('./routes/apiDocsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -25,26 +38,141 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 
-// ── Routes ────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/specs', specRoutes);
+// ── Observability & Request Metrics ────────────────────────────────
+const metrics = {
+  startTime: Date.now(),
+  totalRequests: 0,
+  totalErrors: 0,
+  statusCodes: { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 },
+  recentLatencies: [] // Rolling window of last 100 request durations (ms)
+};
 
-// ── Health check ──────────────────────────────────────────────────
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+app.use((req, res, next) => {
+  const start = Date.now();
+  metrics.totalRequests++;
 
-// ── Error Handling Middleware ────────────────────────────────────
-app.use((err, req, res, next) => {
-  if (err && (err.type === 'entity.too.large' || err.status === 413)) {
-    return res.status(413).json({ error: 'Uploaded file/payload is too large (exceeds 50MB limit).' });
-  }
-  if (err) {
-    console.error('Server error:', err);
-    return res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
-  }
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (metrics.recentLatencies.length >= 100) {
+      metrics.recentLatencies.shift();
+    }
+    metrics.recentLatencies.push(duration);
+
+    const statusGroup = `${Math.floor(res.statusCode / 100)}xx`;
+    if (metrics.statusCodes[statusGroup] !== undefined) {
+      metrics.statusCodes[statusGroup]++;
+    }
+    if (res.statusCode >= 500) {
+      metrics.totalErrors++;
+    }
+  });
+
   next();
 });
+
+// ── API Version Header (non-breaking, informational) ──────────────
+app.use((req, res, next) => {
+  res.setHeader('X-API-Version', '1');
+  next();
+});
+
+// ── Routes (v1) ───────────────────────────────────────────────────
+// Mount at both /api/v1/ (future-proof) and /api/ (backward compat)
+const v1Router = express.Router();
+v1Router.use('/auth', authRoutes);
+v1Router.use('/projects', projectRoutes);
+v1Router.use('/logs', logRoutes);
+v1Router.use('/specs', specRoutes);
+v1Router.use('/approvals', approvalRoutes);
+v1Router.use('/tasks', taskRoutes);
+v1Router.use('/comments', commentRoutes);
+v1Router.use('/notifications', notificationRoutes);
+v1Router.use('/search', searchRoutes);
+v1Router.use('/webhooks', webhookRoutes);
+v1Router.use('/reports', reportRoutes);
+v1Router.use('/data-quality', dataQualityRoutes);
+v1Router.use('/import', importRoutes);
+v1Router.use('/packaging-formats', packagingFormatRoutes);
+v1Router.use('/', apiDocsRoutes);
+
+app.use('/api/v1', v1Router);
+app.use('/api', v1Router);   // Backward-compatible alias — all existing clients work unchanged
+
+// ── Health check with dependency verification ─────────────────────
+const healthHandler = async (req, res) => {
+  const { testConnection } = require('./db');
+  let dbStatus = 'disconnected';
+  let dbOk = false;
+  try {
+    const conn = await testConnection();
+    dbOk = conn && conn.ok;
+    dbStatus = dbOk ? 'connected' : 'disconnected';
+  } catch {
+    dbStatus = 'disconnected';
+  }
+
+  const mem = process.memoryUsage();
+  const uptimeSec = Math.floor(process.uptime());
+  const storageStatus = Array.isArray(store.projects) ? 'ready' : 'initializing';
+
+  const isHealthy = storageStatus === 'ready';
+  const responseData = {
+    status: isHealthy ? (dbOk ? 'healthy' : 'degraded') : 'unhealthy',
+    mode: dbOk ? 'database_rds' : 'local_persistent_store',
+    version: '1.0.0',
+    uptime: uptimeSec,
+    timestamp: new Date().toISOString(),
+    dependencies: {
+      database: dbStatus,
+      storage: storageStatus
+    },
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024)
+    }
+  };
+
+  res.status(isHealthy ? 200 : 503).json(responseData);
+};
+
+app.get('/api/health', healthHandler);
+app.get('/api/v1/health', healthHandler);
+
+// ── Observability & Performance Metrics ───────────────────────────
+const metricsHandler = (req, res) => {
+  const avgLatency = metrics.recentLatencies.length > 0
+    ? Math.round(metrics.recentLatencies.reduce((a, b) => a + b, 0) / metrics.recentLatencies.length)
+    : 0;
+  const mem = process.memoryUsage();
+
+  res.json({
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    requests: {
+      total: metrics.totalRequests,
+      errors: metrics.totalErrors,
+      statusCodes: metrics.statusCodes,
+      avgLatencyMs: avgLatency
+    },
+    system: {
+      memoryRssMb: Math.round(mem.rss / 1024 / 1024),
+      memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      nodeVersion: process.version
+    },
+    entities: {
+      projectsCount: (store.projects || []).length,
+      specsCount: (store.specLibrary || []).length,
+      usersCount: Object.keys(store.users || {}).length
+    }
+  });
+};
+
+app.get('/api/metrics', metricsHandler);
+app.get('/api/v1/metrics', metricsHandler);
+
+// ── Centralized Error Handler (MUST be last middleware) ───────────
+app.use(errorHandler);
+
 
 // ── Startup & DB Initialization ─────────────────────────────────────
 async function bootstrap() {
@@ -86,7 +214,7 @@ async function bootstrap() {
       await runMigrations();
       await runSeeds();
       const dbProjects = await ProjectsRepo.getAll();
-      if (dbProjects && dbProjects.length > 0) {
+      if (Array.isArray(dbProjects)) {
         store.projects = dbProjects;
         console.log(`📦 Loaded ${dbProjects.length} project(s) from PostgreSQL database.`);
       }
@@ -96,7 +224,7 @@ async function bootstrap() {
         console.log(`👥 Synchronized users from PostgreSQL database.`);
       }
       const dbSpecs = await SpecLibraryRepo.getAll();
-      if (dbSpecs && dbSpecs.length > 0) {
+      if (Array.isArray(dbSpecs)) {
         store.specLibrary = dbSpecs;
         console.log(`📋 Loaded ${dbSpecs.length} spec(s) from Spec Library.`);
       }

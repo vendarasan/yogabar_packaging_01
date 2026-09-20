@@ -1,0 +1,239 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Packaging Development Platform API",
+    "version": "1.0.0",
+    "description": "Authoritative enterprise API for packaging lifecycle execution, multi-component BOM management, approvals, workflow dependencies, event-driven webhooks, and executive reporting.",
+    "contact": {
+      "name": "Packaging Leadership & Architecture Team",
+      "email": "architecture@yogabar.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Primary v1 API Endpoint"
+    },
+    {
+      "url": "/api",
+      "description": "Backward-Compatible Legacy Alias Endpoint"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Token",
+        "description": "Provide user session token in Authorization header: Bearer <token>"
+      },
+      "CookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pkg_session",
+        "description": "HttpOnly session cookie generated upon successful login"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" },
+          "details": { "type": "object" }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "PRJ-001" },
+          "projectName": { "type": "string", "example": "Protein Bar Dark Choc 50g" },
+          "fgCode": { "type": "string", "example": "FG-PB-50G-01" },
+          "stage": { "type": "string", "example": "Artwork" },
+          "status": { "type": "string", "example": "On Track" },
+          "risk": { "type": "string", "example": "Low" },
+          "targetLaunchDate": { "type": "string", "format": "date", "example": "2026-11-15" },
+          "supplier": { "type": "string", "example": "Huhtamaki Packaging Ltd" },
+          "materials": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Material" }
+          }
+        }
+      },
+      "Material": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "MAT-001" },
+          "name": { "type": "string", "example": "Primary Wrapper Film" },
+          "type": { "type": "string", "example": "Pouch" },
+          "pmCode": { "type": "string", "example": "PM-POU-001" },
+          "stage": { "type": "string", "example": "Artwork" },
+          "supplier": { "type": "string", "example": "Huhtamaki Packaging Ltd" },
+          "artworkApproved": { "type": "boolean" },
+          "poStatus": { "type": "string", "example": "Raised" }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "WHK-001" },
+          "name": { "type": "string", "example": "ERP Production Sync" },
+          "url": { "type": "string", "example": "https://erp.internal/webhooks/packaging" },
+          "events": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["ProjectCreated", "StageChanged", "ArtworkApproved"]
+          },
+          "isActive": { "type": "boolean" },
+          "failureCount": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "security": [
+    { "BearerAuth": [] },
+    { "CookieAuth": [] }
+  ],
+  "paths": {
+    "/auth/me": {
+      "get": {
+        "summary": "Retrieve authenticated user session details",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": { "description": "Current user profile, role, and fine-grained permissions" },
+          "401": { "description": "Unauthenticated" }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "summary": "List all projects with pagination and supplier scoping",
+        "tags": ["Projects"],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "includeDeleted", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Array of projects matching credentials" }
+        }
+      },
+      "post": {
+        "summary": "Create a new packaging development project",
+        "tags": ["Projects"],
+        "responses": {
+          "201": { "description": "Project created and ProjectCreated event dispatched" },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "summary": "Get full details of a specific project",
+        "tags": ["Projects"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Full project details" },
+          "403": { "description": "Forbidden for unauthorized suppliers" },
+          "404": { "description": "Project not found" }
+        }
+      }
+    },
+    "/reports/project-review/{projectId}": {
+      "get": {
+        "summary": "Generate complete executive project review briefing",
+        "tags": ["Reporting"],
+        "parameters": [
+          { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Authoritative review report with materials, specs, risks, and tasks" }
+        }
+      }
+    },
+    "/reports/management": {
+      "get": {
+        "summary": "Aggregated platform management KPIs and status distributions",
+        "tags": ["Reporting"],
+        "responses": {
+          "200": { "description": "Current, historical, and calculated management metrics" }
+        }
+      }
+    },
+    "/reports/suppliers": {
+      "get": {
+        "summary": "Fact-based supplier lead times, delay rates, and on-time performance",
+        "tags": ["Reporting"],
+        "responses": {
+          "200": { "description": "Factual supplier performance calculations" }
+        }
+      }
+    },
+    "/reports/stages": {
+      "get": {
+        "summary": "Stage cycle time analytics, transition volume, and bottleneck identification",
+        "tags": ["Reporting"],
+        "responses": {
+          "200": { "description": "Historical duration averages and delay frequency per stage" }
+        }
+      }
+    },
+    "/data-quality/audit": {
+      "get": {
+        "summary": "Execute non-destructive data quality audit across projects",
+        "tags": ["Governance"],
+        "responses": {
+          "200": { "description": "Health score (0-100) and categorized anomaly list" }
+        }
+      }
+    },
+    "/import/validate": {
+      "post": {
+        "summary": "Dry-run validation of batch project/material records",
+        "tags": ["Governance"],
+        "responses": {
+          "200": { "description": "Validation results with error and warning indicators" }
+        }
+      }
+    },
+    "/import/commit": {
+      "post": {
+        "summary": "Execute atomic ingestion of validated records",
+        "tags": ["Governance"],
+        "responses": {
+          "201": { "description": "Import committed with audit logging and event dispatch" }
+        }
+      }
+    },
+    "/webhooks": {
+      "get": {
+        "summary": "List registered outbound webhooks",
+        "tags": ["Integrations"],
+        "responses": {
+          "200": { "description": "List of active and inactive webhook subscriptions" }
+        }
+      },
+      "post": {
+        "summary": "Register a new outbound webhook with HMAC secret",
+        "tags": ["Integrations"],
+        "responses": {
+          "201": { "description": "Webhook registered" }
+        }
+      }
+    },
+    "/webhooks/deliveries/{deliveryId}/retry": {
+      "post": {
+        "summary": "Trigger manual retry for a failed or pending webhook delivery",
+        "tags": ["Integrations"],
+        "parameters": [
+          { "name": "deliveryId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Delivery re-executed and updated" }
+        }
+      }
+    }
+  }
+}

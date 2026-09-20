@@ -243,12 +243,12 @@ export default function Tracker({
           </div>
         ) : (
           <div className="table-scroll-wrap modern-mat-table-wrap">
-            <table className="modern-mat-table" style={{ tableLayout: 'fixed', minWidth: '2260px', width: '100%' }}>
+            <table className="modern-mat-table" style={{ tableLayout: 'fixed', minWidth: '2260px', width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
-                  <th className="sticky-proj-th-expand" style={{ width: '40px', padding: '8px 4px', textAlign: 'center' }}></th>
-                  <th className="sticky-proj-th-fg" style={{ width: '130px' }}>FG Code</th>
-                  <th className="sticky-proj-th-name" style={{ width: '210px' }}>Project Name</th>
+                  <th className="sticky-proj-th-expand" style={{ width: '40px', padding: '8px 4px', textAlign: 'center', position: 'sticky', left: 0, top: 0, zIndex: 50, backgroundColor: '#0B2529' }}></th>
+                  <th className="sticky-proj-th-fg" style={{ width: '130px', position: 'sticky', left: '40px', top: 0, zIndex: 50, backgroundColor: '#0B2529' }}>FG Code</th>
+                  <th className="sticky-proj-th-name" style={{ width: '210px', position: 'sticky', left: '170px', top: 0, zIndex: 50, backgroundColor: '#0B2529', borderRight: '1px solid var(--border-color)', boxShadow: '2px 1px 6px rgba(0, 0, 0, 0.35)' }}>Project Name</th>
                   <th style={{ width: '160px' }}>Stage &amp; Days Left</th>
                   <th style={{ width: '50px', textAlign: 'center' }}>LT</th>
                   <th style={{ width: '110px', textAlign: 'center' }}>Status</th>
@@ -282,7 +282,7 @@ export default function Tracker({
                   return (
                     <React.Fragment key={p.id}>
                       <tr className={`${rowCls} ${editingFG === p.id || editingFactory === p.id || editingDesc === p.id ? 'tracker-edit-row' : ''}`}>
-                        <td className="expand-cell sticky-proj-td-expand" style={{ boxShadow: `inset 3px 0 0 ${lt === 'ok' ? 'var(--green)' : lt === 'warn' ? 'var(--amber)' : 'var(--red)'}`, textAlign: 'center', padding: '6px 4px' }}>
+                        <td className="expand-cell sticky-proj-td-expand" style={{ boxShadow: `inset 3px 0 0 ${lt === 'ok' ? 'var(--green)' : lt === 'warn' ? 'var(--amber)' : 'var(--red)'}`, textAlign: 'center', padding: '6px 4px', position: 'sticky', left: 0, zIndex: 30, backgroundColor: '#0B2529' }}>
                           <button
                             type="button"
                             className={`row-expand-btn ${exp ? 'expanded' : ''}`}
@@ -294,61 +294,67 @@ export default function Tracker({
                         </td>
 
                         {/* FG CODE CELL */}
-                        <td className="sticky-proj-td-fg" style={{ overflow: 'visible' }}>
+                        <td className="sticky-proj-td-fg" style={{ position: 'sticky', left: '40px', zIndex: 30, backgroundColor: '#0B2529' }}>
                           <div className="editable-cell">
                             {editingFG === p.id ? (
                               <div className="inline-edit-wrap">
                                 <input
-                                  className="inline-edit-input"
-                                  value={fgValue}
-                                  onChange={e => setFgValue(e.target.value)}
-                                  onKeyDown={e => {
-                                    if(e.key === 'Enter') handleSaveFG(p.id);
-                                    if(e.key === 'Escape') setEditingFG(null);
-                                  }}
-                                  autoFocus
-                                />
-                                <button className="inline-btn save-btn" onClick={() => handleSaveFG(p.id)}>✓</button>
-                                <button className="inline-btn cancel-btn" onClick={() => setEditingFG(null)}>✕</button>
-                              </div>
-                            ) : (
-                              <>
-                                <span>
-                                  {p.fgCode ? (
-                                    <span style={{ fontFamily: 'var(--mono)', color: 'var(--teal)', fontSize: '10px', fontWeight: '700' }}>{p.fgCode}</span>
-                                  ) : (
-                                    <span style={{ opacity: '0.35', fontSize: '10px' }}>—</span>
-                                  )}
-                                </span>
-                                {canEdit && (
-                                  <button
-                                    type="button"
-                                    className="edit-icon edit-with-text"
-                                    onClick={() => handleStartEditFG(p)}
-                                    title="Edit FG Code"
-                                  >
-                                    <Edit2 size={9} />
-                                    <span>Edit</span>
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
+                                   className="inline-edit-input"
+                                   value={fgValue}
+                                   onChange={e => setFgValue(e.target.value)}
+                                   onKeyDown={e => {
+                                     if(e.key === 'Enter') handleSaveFG(p.id);
+                                     if(e.key === 'Escape') setEditingFG(null);
+                                   }}
+                                   autoFocus
+                                 />
+                                 <button className="inline-btn save-btn" onClick={() => handleSaveFG(p.id)}>✓</button>
+                                 <button className="inline-btn cancel-btn" onClick={() => setEditingFG(null)}>✕</button>
+                               </div>
+                             ) : (
+                               <>
+                                 <span>
+                                   {p.fgCode ? (
+                                     <span style={{ fontFamily: 'var(--mono)', color: 'var(--teal)', fontSize: '10px', fontWeight: '700' }}>{p.fgCode}</span>
+                                   ) : (
+                                     <span style={{ opacity: '0.35', fontSize: '10px' }}>—</span>
+                                   )}
+                                 </span>
+                                 {canEdit && (
+                                   <button
+                                     type="button"
+                                     className="edit-icon edit-with-text"
+                                     onClick={() => handleStartEditFG(p)}
+                                     title="Edit FG Code"
+                                   >
+                                     <Edit2 size={9} />
+                                     <span>Edit</span>
+                                   </button>
+                                 )}
+                               </>
+                             )}
+                           </div>
+                         </td>
 
-                        {/* PROJECT NAME */}
-                        <td
-                          className="sticky-proj-td-name"
-                          style={{
-                            fontWeight: '600',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            cursor: onOpenProjectDrawer ? 'pointer' : 'default'
-                          }}
-                          title={`${p.projectName} — Click to open Project Detail Drawer`}
-                          onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(p)}
-                        >
+                         {/* PROJECT NAME */}
+                         <td
+                           className="sticky-proj-td-name"
+                           style={{
+                             fontWeight: '600',
+                             whiteSpace: 'nowrap',
+                             overflow: 'hidden',
+                             textOverflow: 'ellipsis',
+                             cursor: onOpenProjectDrawer ? 'pointer' : 'default',
+                             position: 'sticky',
+                             left: '170px',
+                             zIndex: 30,
+                             backgroundColor: '#0B2529',
+                             borderRight: '1px solid var(--border-color)',
+                             boxShadow: '2px 0 6px rgba(0, 0, 0, 0.3)'
+                           }}
+                           title={`${p.projectName} — Click to open Project Detail Drawer`}
+                           onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(p)}
+                         >
                           <span style={{ borderBottom: onOpenProjectDrawer ? '1px dashed rgba(0, 200, 215, 0.4)' : 'none' }}>
                             {p.projectName}
                           </span>

@@ -1,4 +1,10 @@
 {
+  "name": "yogabar-packaging",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npm test --prefix server"
+  },
   "dependencies": {
     "pg": "^8.23.0"
   }

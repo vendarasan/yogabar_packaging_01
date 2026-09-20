@@ -44,7 +44,19 @@ export function getDaysLeft(p) { if(p.status==='Launched') return null; const st
 export function getSlippage(p) { if(!p.originalMilestones||!p.milestones) return 0; const o=p.originalMilestones.Connectivity,c=p.milestones.Connectivity; if(!o||!c) return 0; return Math.round((new Date(c)-new Date(o))/86400000); }
 export function isRecentlyAdvanced(p) { return p.advancedAt&&(Date.now()-p.advancedAt)<86400000; }
 export function canLaunchProject(p) { if(!p.materials||!p.materials.length) return false; return p.materials.every(m=>(m.stage||'Brief')==='Connectivity'); }
-export function timeAgo(ts) { const d=Math.round((Date.now()-ts)/60000); if(d<1) return 'just now'; if(d<60) return `${d}m ago`; const h=Math.round(d/60); if(h<24) return `${h}h ago`; return `${Math.round(h/24)}d ago`; }
+export function timeAgo(ts) {
+  if (!ts) return 'recently';
+  const time = typeof ts === 'number' ? ts : new Date(ts).getTime();
+  if (isNaN(time)) return 'recently';
+  const diffMs = Date.now() - time;
+  const d = Math.round(diffMs / 60000);
+  if (d < 1) return 'just now';
+  if (d < 60) return `${d}m ago`;
+  const h = Math.round(d / 60);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.round(h / 24);
+  return `${days}d ago`;
+}
 export function calcMatMilestones(briefDate, matOrPrintType, optMatType) {
   let printType = 'Not Applicable';
   let matType = '';

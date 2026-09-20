@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LayoutDashboard, ListTodo, Calendar, Map, Users, AlertTriangle, Package,
   CheckCircle2, XCircle, Rocket, Clock, CalendarClock, FileText, Zap, Star,
@@ -11,6 +11,7 @@ import {
   determineCPMIndex, getNextAction, daysFromNow, getArtworkCode,
   getArtworkFiles, getMaterialHierarchyTier, getTierName
 } from '../../utils';
+import { getTasks } from '../../api';
 
 const MENU_ITEMS = [
   {
@@ -99,6 +100,17 @@ export default function Dashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeHealthFilter, setActiveHealthFilter] = useState('ALL'); // ALL, ON_TRACK, AT_RISK, DELAYED, CPM, UPCOMING
   const [copiedCode, setCopiedCode] = useState(null);
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    getTasks()
+      .then(res => {
+        if (res.data?.success) {
+          setTasks(res.data.tasks || []);
+        }
+      })
+      .catch(() => {});
+  }, [projects]);
 
   // ─── Real KPI Calculations (Zero fake data) ──────────────────────────
   const total = projects.length;
@@ -170,6 +182,31 @@ export default function Dashboard({
   // ─── Needs Attention Triage ──────────────────────────────────────────
   const attentionItems = useMemo(() => {
     const items = [];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Blocked, Critical, or Overdue Tasks
+    tasks.forEach(t => {
+      if (t.status === 'COMPLETED') return;
+      const isBlocked = t.status === 'BLOCKED';
+      const isCritical = t.priority === 'Critical';
+      const isOverdue = t.dueDate && t.dueDate < todayStr;
+
+      if (isBlocked || isCritical || isOverdue) {
+        const parentProj = projects.find(x => x.id === t.projectId) || { id: t.projectId, projectName: t.projectName || 'Project' };
+        items.push({
+          id: `task-${t.id}`,
+          type: 'TASK',
+          severity: isBlocked || isCritical ? 'danger' : 'warning',
+          title: isBlocked ? `Task Blocked: ${t.title}` : isCritical ? `Critical Action Required: ${t.title}` : `Task Overdue: ${t.title}`,
+          why: `${t.projectName || parentProj.projectName} · ${t.assignedTo ? `Assigned: ${t.assignedTo}` : 'Unassigned'} · Due: ${t.dueDate || 'ASAP'}`,
+          action: 'Manage Tasks',
+          initialTab: 'tasks',
+          project: parentProj,
+          matIndex: 0
+        });
+      }
+    });
+
     projects.forEach(p => {
       if (p.status === 'Launched') return;
       const mats = p.materials || [];
@@ -178,7 +215,26 @@ export default function Dashboard({
       const dl = getDaysLeft(p);
       const lt = getLTStatus(p);
 
-      // 1. Crunch plan pending approval
+      // 2. Open Critical or High Risks
+      if (p.risks && Array.isArray(p.risks)) {
+        p.risks.forEach(r => {
+          if (r.status !== 'Closed' && r.status !== 'Mitigated' && (r.severity === 'Critical' || r.severity === 'High')) {
+            items.push({
+              id: `risk-${p.id}-${r.id}`,
+              type: 'RISK_ALERT',
+              severity: r.severity === 'Critical' ? 'danger' : 'warning',
+              title: `Risk Alert [${r.severity}]: ${r.title}`,
+              why: `${p.projectName} · Owner: ${r.owner || 'Unassigned'} · Stage: ${r.stage || 'General'} · Mitigation: ${r.action || 'Required'}`,
+              action: 'Mitigate Risk',
+              initialTab: 'risks',
+              project: p,
+              matIndex: cpmIdx >= 0 ? cpmIdx : 0
+            });
+          }
+        });
+      }
+
+      // 3. Crunch plan pending approval
       if (p.crunchPlan?.status === 'PENDING_STAGE1') {
         items.push({
           id: `crunch1-${p.id}`,
@@ -187,6 +243,7 @@ export default function Dashboard({
           title: 'Crunch Plan Pending Stage 1 Approval',
           why: `${p.projectName} · Timeline compression requires Packaging Admin sign-off`,
           action: 'Review Crunch Plan',
+          initialTab: 'overview',
           project: p,
           matIndex: cpmIdx
         });
@@ -198,12 +255,13 @@ export default function Dashboard({
           title: 'Crunch Plan Pending Super Admin Sign-Off',
           why: `${p.projectName} · Final governance authorization pending`,
           action: 'Review Crunch Plan',
+          initialTab: 'overview',
           project: p,
           matIndex: cpmIdx
         });
       }
 
-      // 2. Overdue project stage
+      // 4. Overdue project stage
       if (lt === 'late' || (dl !== null && dl < 0)) {
         items.push({
           id: `late-${p.id}`,
@@ -212,13 +270,29 @@ export default function Dashboard({
           title: `Milestone Overdue at ${projStage}`,
           why: `${p.projectName} · Exceeded schedule by ${Math.abs(dl)} day${Math.abs(dl) !== 1 ? 's' : ''}`,
           action: 'Accelerate Stage',
+          initialTab: 'overview',
           project: p,
           matIndex: cpmIdx
         });
       }
 
-      // 3. Materials blocked by PO at VPDF
+      // 5. Materials checks: Artwork gate, PO at VPDF, Specs
       mats.forEach((m, mIdx) => {
+        // Artwork Stage Gate (Must be approved before printing)
+        if (m.stage === 'Artwork' && !m.artworkApproved) {
+          items.push({
+            id: `aw-appr-${p.id}-${mIdx}`,
+            type: 'APPROVAL_GATE',
+            severity: 'warning',
+            title: `Artwork Approval Gate Required`,
+            why: `${m.name} (${p.projectName}) · Universal artwork approval required before advancing past Artwork`,
+            action: 'Review Artwork',
+            initialTab: 'tasks',
+            project: p,
+            matIndex: mIdx
+          });
+        }
+
         if (m.stage === 'VPDF' && m.poStatus && m.poStatus !== 'Raised') {
           items.push({
             id: `po-${p.id}-${mIdx}`,
@@ -227,10 +301,12 @@ export default function Dashboard({
             title: `PO Required for Printing Gate`,
             why: `${m.name} (${p.projectName}) · Current PO status: ${m.poStatus || 'Pending'}`,
             action: 'Raise PO',
+            initialTab: 'overview',
             project: p,
             matIndex: mIdx
           });
         }
+
         if (m.specSheet?.governance?.status === 'REVISION_REQUESTED') {
           items.push({
             id: `spec-rev-${p.id}-${mIdx}`,
@@ -239,13 +315,14 @@ export default function Dashboard({
             title: `Specification Revision Requested`,
             why: `${m.name} · PM or QA requested technical corrections`,
             action: 'Edit Specs',
+            initialTab: 'overview',
             project: p,
             matIndex: mIdx
           });
         }
       });
 
-      // 4. Due in <= 48h
+      // 6. Due in <= 48h
       if (dl !== null && dl >= 0 && dl <= 2 && lt !== 'late') {
         items.push({
           id: `due-${p.id}`,
@@ -254,6 +331,7 @@ export default function Dashboard({
           title: `Milestone Due in ${dl === 0 ? 'Today' : `${dl} Day${dl > 1 ? 's' : ''}`}`,
           why: `${p.projectName} · ${projStage} closing soon`,
           action: 'Complete Stage',
+          initialTab: 'overview',
           project: p,
           matIndex: cpmIdx
         });
@@ -261,7 +339,7 @@ export default function Dashboard({
     });
 
     return items;
-  }, [projects]);
+  }, [projects, tasks]);
 
   // ─── Stage Counts for Development Pipeline ───────────────────────────
   const pipelineCounts = useMemo(() => {
@@ -838,7 +916,7 @@ export default function Dashboard({
                     <div className="pcc-attention-cta">
                       <button
                         className="btn btn-primary btn-sm pcc-att-btn"
-                        onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(item.project, item.matIndex)}
+                        onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(item.project, item.matIndex, item.initialTab || 'overview')}
                       >
                         {item.action} →
                       </button>

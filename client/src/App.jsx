@@ -29,6 +29,12 @@ import UserDirectoryModal from './components/UserManagement/UserDirectoryModal';
 import ProfileModal from './components/Modals/ProfileModal';
 import ProjectDetailDrawer from './components/Modals/ProjectDetailDrawer';
 import ActivityStreamModal from './components/Modals/ActivityStreamModal';
+import NotificationCenterModal from './components/Modals/NotificationCenterModal';
+import GlobalSearchModal from './components/Modals/GlobalSearchModal';
+import ExecutiveReportingModal from './components/Modals/ExecutiveReportingModal';
+import DataQualityModal from './components/Modals/DataQualityModal';
+import ImportDataModal from './components/Modals/ImportDataModal';
+import WebhookManagerModal from './components/Modals/WebhookManagerModal';
 
 import { fmt, getProjectStage } from './utils';
 
@@ -113,8 +119,29 @@ export default function App() {
   const [detailModalState, setDetailModalState] = useState({ isOpen: false, project: null, initialTab: 'specs' });
   const [specModalData, setSpecModalData] = useState(null);
   const [artworkViewerState, setArtworkViewerState] = useState({ isOpen: false, project: null, material: null, mIdx: null });
-  const [drawerState, setDrawerState] = useState({ isOpen: false, project: null, materialIndex: null });
+  const [drawerState, setDrawerState] = useState({ isOpen: false, project: null, materialIndex: null, initialTab: 'overview' });
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+  const [isReportingModalOpen, setIsReportingModalOpen] = useState(false);
+  const [reportingProjectId, setReportingProjectId] = useState(null);
+  const [isDataQualityModalOpen, setIsDataQualityModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isWebhookModalOpen, setIsWebhookModalOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K Search shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsNotificationCenterOpen(false);
+        setIsActivityModalOpen(false);
+        setIsGlobalSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const showToast = (msg, err = false) => {
     setToast({ msg, err });
@@ -337,12 +364,21 @@ export default function App() {
     }
   };
 
-  const handleOpenProjectDrawer = (project, matIndex = null) => {
+  const handleOpenProjectDrawer = (project, matIndex = null, initialTab = 'overview') => {
+    let p = project;
+    if (typeof project === 'string' || typeof project === 'number') {
+      p = projects.find(x => String(x.id) === String(project));
+    }
     setDrawerState({
       isOpen: true,
-      project,
-      materialIndex: matIndex !== null ? matIndex : 0
+      project: p,
+      materialIndex: matIndex !== null ? matIndex : 0,
+      initialTab: initialTab || 'overview'
     });
+  };
+
+  const handleOpenProjectById = (projectId, matIndex = null, initialTab = 'overview') => {
+    handleOpenProjectDrawer(projectId, matIndex, initialTab);
   };
 
   const exportCSV = () => {
@@ -405,10 +441,14 @@ export default function App() {
         unreadCount={unreadCount}
         logs={logs}
         onOpenNotif={() => {
+          setIsNotificationCenterOpen(false);
+          setIsGlobalSearchOpen(false);
           setIsActivityModalOpen(true);
           setIsMobileNavOpen(false);
         }}
         onOpenActivityStream={() => {
+          setIsNotificationCenterOpen(false);
+          setIsGlobalSearchOpen(false);
           setIsActivityModalOpen(true);
           setIsMobileNavOpen(false);
         }}
@@ -433,7 +473,28 @@ export default function App() {
           onLogsMarkedSeen={(ts) => setSeenAt(ts)}
           exportCSV={exportCSV}
           onToggleMobileNav={() => setIsMobileNavOpen(!isMobileNavOpen)}
-          onOpenActivityStream={() => setIsActivityModalOpen(true)}
+          onOpenActivityStream={() => {
+            setIsNotificationCenterOpen(false);
+            setIsGlobalSearchOpen(false);
+            setIsActivityModalOpen(true);
+          }}
+          onOpenGlobalSearch={() => {
+            setIsNotificationCenterOpen(false);
+            setIsActivityModalOpen(false);
+            setIsGlobalSearchOpen(true);
+          }}
+          onOpenNotifications={() => {
+            setIsGlobalSearchOpen(false);
+            setIsActivityModalOpen(false);
+            setIsNotificationCenterOpen(true);
+          }}
+          onOpenReporting={() => {
+            setReportingProjectId(null);
+            setIsReportingModalOpen(true);
+          }}
+          onOpenDataQuality={() => setIsDataQualityModalOpen(true)}
+          onOpenImport={() => setIsImportModalOpen(true)}
+          onOpenWebhooks={() => setIsWebhookModalOpen(true)}
         />
 
         <div className="page-container">
@@ -481,7 +542,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'gantt' && <Gantt projects={projects} />}
+            {activeTab === 'gantt' && <Gantt projects={projects} onOpenProject={handleOpenProjectById} />}
             {activeTab === 'specs' && (
               <SpecsHub
                 projects={projects}
@@ -506,7 +567,14 @@ export default function App() {
             )}
             {activeTab === 'stages' && <StageGuide />}
             {activeTab === 'raci' && <RACI />}
-            {activeTab === 'risks' && <Risks />}
+            {activeTab === 'risks' && (
+              <Risks
+                projects={projects}
+                onOpenProject={handleOpenProjectById}
+                onRefreshProjects={fetchProjects}
+                showToast={showToast}
+              />
+            )}
             {activeTab === 'add-project' && (
               <AddProjectPage
                 editProject={editProject}
@@ -589,8 +657,9 @@ export default function App() {
         isOpen={drawerState.isOpen}
         project={drawerState.project}
         materialIndex={drawerState.materialIndex}
+        initialTab={drawerState.initialTab || 'overview'}
         currentUser={currentUser}
-        onClose={() => setDrawerState({ isOpen: false, project: null, materialIndex: null })}
+        onClose={() => setDrawerState({ isOpen: false, project: null, materialIndex: null, initialTab: 'overview' })}
         onOpenSpecModal={handleOpenSpecModal}
         onOpenArtworkModal={handleOpenArtworkModal}
         onOpenCrunchModal={(p) => {
@@ -598,11 +667,11 @@ export default function App() {
         }}
         onNavigateTab={(tab) => {
           setActiveTab(tab);
-          setDrawerState({ isOpen: false, project: null, materialIndex: null });
+          setDrawerState({ isOpen: false, project: null, materialIndex: null, initialTab: 'overview' });
         }}
         onOpenNotif={() => {
           setActiveTab('tracker');
-          setDrawerState({ isOpen: false, project: null, materialIndex: null });
+          setDrawerState({ isOpen: false, project: null, materialIndex: null, initialTab: 'overview' });
         }}
         showToast={showToast}
       />
@@ -614,6 +683,52 @@ export default function App() {
         logs={logs}
         seenAt={seenAt}
         onLogsMarkedSeen={(ts) => setSeenAt(ts)}
+      />
+
+      {/* NOTIFICATION CENTER MODAL */}
+      <NotificationCenterModal
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        onOpenProject={handleOpenProjectById}
+      />
+
+      {/* GLOBAL SEARCH MODAL */}
+      <GlobalSearchModal
+        isOpen={isGlobalSearchOpen}
+        onClose={() => setIsGlobalSearchOpen(false)}
+        onOpenProject={handleOpenProjectById}
+        onNavigateTab={(tab) => setActiveTab(tab)}
+      />
+
+      {/* EXECUTIVE REPORTING & ANALYTICS MODAL */}
+      <ExecutiveReportingModal
+        isOpen={isReportingModalOpen}
+        onClose={() => setIsReportingModalOpen(false)}
+        projects={projects}
+        initialProjectId={reportingProjectId}
+      />
+
+      {/* DATA QUALITY & ANOMALY MONITOR */}
+      <DataQualityModal
+        isOpen={isDataQualityModalOpen}
+        onClose={() => setIsDataQualityModalOpen(false)}
+        onNavigateProject={handleOpenProjectById}
+      />
+
+      {/* CONTROLLED DATA IMPORT */}
+      <ImportDataModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => {
+          fetchProjects();
+          showToast('Import successful! Projects updated.');
+        }}
+      />
+
+      {/* WEBHOOKS & DEVELOPER INTEGRATIONS */}
+      <WebhookManagerModal
+        isOpen={isWebhookModalOpen}
+        onClose={() => setIsWebhookModalOpen(false)}
       />
     </div>
   );
