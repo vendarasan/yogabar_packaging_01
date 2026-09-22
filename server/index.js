@@ -170,6 +170,23 @@ const metricsHandler = (req, res) => {
 app.get('/api/metrics', metricsHandler);
 app.get('/api/v1/metrics', metricsHandler);
 
+// ── Static Frontend & SPA Fallback (Production) ───────────────────
+const path = require('path');
+const fs = require('fs');
+const clientDistPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
+
+// ── 404 Handler for Unmatched API Routes ───────────────────────────
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: `Cannot ${req.method} ${req.originalUrl}` });
+});
+
 // ── Centralized Error Handler (MUST be last middleware) ───────────
 app.use(errorHandler);
 
