@@ -118,6 +118,7 @@ const healthHandler = async (req, res) => {
   const isHealthy = storageStatus === 'ready';
   const responseData = {
     status: isHealthy ? (dbOk ? 'healthy' : 'degraded') : 'unhealthy',
+    environment: process.env.NODE_ENV || 'development',
     mode: dbOk ? 'database_rds' : 'local_persistent_store',
     version: '1.0.0',
     uptime: uptimeSec,
