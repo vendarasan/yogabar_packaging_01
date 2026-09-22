@@ -455,16 +455,16 @@ export default function SpecConverterModal({
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   style={{
-                    border: '2px dashed var(--teal, #00f3ff)',
+                    border: '2px dashed var(--primary, #008767)',
                     borderRadius: '12px',
                     padding: '40px 24px',
-                    background: 'rgba(6, 42, 48, 0.45)',
+                    background: 'var(--surface-secondary, #F4F8F6)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     position: 'relative'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(6, 42, 48, 0.7)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(6, 42, 48, 0.45)'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--brand-mint-light, #EAF2EE)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--surface-secondary, #F4F8F6)'}
                 >
                   <input
                     ref={fileInputRef}
@@ -660,7 +660,7 @@ export default function SpecConverterModal({
                   {/* PDF Sub-header */}
                   <div style={{
                     padding: '8px 14px',
-                    background: 'rgba(6, 42, 48, 0.75)',
+                    background: 'var(--surface-secondary, #F4F8F6)',
                     borderBottom: '1px solid var(--border-color)',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -671,8 +671,8 @@ export default function SpecConverterModal({
                     flexWrap: 'wrap'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: '1 1 auto' }}>
-                      <FileText size={14} style={{ color: 'var(--teal)', flexShrink: 0 }} />
-                      <span style={{ fontWeight: 700, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file?.name}>
+                      <FileText size={14} style={{ color: 'var(--primary, #008767)', flexShrink: 0 }} />
+                      <span style={{ fontWeight: 700, color: 'var(--text-main, #102B36)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file?.name}>
                         {file?.name || 'Original Specification PDF'}
                       </span>
                       {file?.size && (
@@ -855,7 +855,7 @@ export default function SpecConverterModal({
                     width: isMaximizedPdf ? '0%' : `${100 - splitRatio}%`,
                     display: isMaximizedPdf ? 'none' : 'flex',
                     flexDirection: 'column',
-                    background: 'var(--bg-sidebar, #062a30)',
+                    background: 'var(--card-bg, #FFFFFF)',
                     transition: isDragging ? 'none' : 'width 0.15s ease'
                   }}
                 >
@@ -907,8 +907,8 @@ export default function SpecConverterModal({
                           fontWeight: 700,
                           cursor: 'pointer',
                           border: 'none',
-                          background: activeReviewTab === tab.id ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-                          color: activeReviewTab === tab.id ? '#041c20' : 'var(--text-dim)'
+                          background: activeReviewTab === tab.id ? 'var(--primary, #008767)' : 'var(--surface-secondary, #F4F8F6)',
+                          color: activeReviewTab === tab.id ? '#ffffff' : 'var(--text-secondary)'
                         }}
                       >
                         {tab.label}
@@ -1030,9 +1030,9 @@ export default function SpecConverterModal({
                                   value={p.defectType || 'MJ'}
                                   onChange={e => handleUpdateParam(idx, 'defectType', e.target.value)}
                                   style={{
-                                    background: '#041c20',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    color: '#ffffff',
+                                    background: 'var(--card-bg, #ffffff)',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-main)',
                                     borderRadius: '4px',
                                     padding: '2px',
                                     fontSize: '10px'
@@ -1319,10 +1319,10 @@ export default function SpecConverterModal({
                           }}
                         >
                           {projects.length === 0 && (
-                            <option value="" style={{ background: '#062a30' }}>— No projects available —</option>
+                            <option value="">— No projects available —</option>
                           )}
                           {projects.map(p => (
-                            <option key={p.id} value={p.id} style={{ background: '#062a30' }}>
+                            <option key={p.id} value={p.id}>
                               {p.projectName} ({p.id})
                             </option>
                           ))}
@@ -1337,10 +1337,10 @@ export default function SpecConverterModal({
                           onChange={e => setSelectedMaterialIdx(Number(e.target.value))}
                         >
                           {currentMaterials.length === 0 && (
-                            <option value="" style={{ background: '#062a30' }}>— Select a project first —</option>
+                            <option value="">— Select a project first —</option>
                           )}
                           {currentMaterials.map((m, idx) => (
-                            <option key={idx} value={idx} style={{ background: '#062a30' }}>
+                            <option key={idx} value={idx}>
                               {m.name} ({m.pmCode || m.type})
                             </option>
                           ))}

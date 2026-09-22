@@ -404,7 +404,7 @@ export default function Dashboard({
   };
 
   return (
-    <div id="project-control-center" className="panel active pcc-container">
+    <div id="project-control-center" className="panel active pcc-container" style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
       {/* ── TOOLBAR / SEARCH / EXPORT STRIP ── */}
       <div className="pcc-toolbar">
@@ -471,48 +471,122 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* ── 4. EXECUTIVE KPI STRIP (REAL DATA ONLY) ── */}
+      {/* ── 4. EXECUTIVE KPI CARDS (REAL DATA ONLY) ── */}
       <div className="pcc-kpi-strip">
-        <div className="pcc-kpi-item" onClick={() => setActiveHealthFilter('ALL')} title="Total tracked packaging projects">
-          <div className="pcc-kpi-label">TOTAL PROJECTS</div>
-          <div className="pcc-kpi-val">{total}</div>
-          <div className="pcc-kpi-sub">{activeProjects.length} active · {total - activeProjects.length} launched</div>
-        </div>
-        <div className="pcc-kpi-divider" />
-
-        <div className="pcc-kpi-item" onClick={() => setActiveHealthFilter('ON_TRACK')} title="Projects progressing on schedule">
-          <div className="pcc-kpi-label">ON TRACK</div>
-          <div className="pcc-kpi-val text-success">{ontrack}</div>
-          <div className="pcc-kpi-sub">Within lead time tolerance</div>
-        </div>
-        <div className="pcc-kpi-divider" />
-
-        <div className="pcc-kpi-item" onClick={() => setActiveHealthFilter('ALL')} title="Projects currently in development pipeline">
-          <div className="pcc-kpi-label">IN PROGRESS</div>
-          <div className="pcc-kpi-val text-info">{inProgress}</div>
-          <div className="pcc-kpi-sub">Active stage execution</div>
-        </div>
-        <div className="pcc-kpi-divider" />
-
-        <div className="pcc-kpi-item" onClick={() => setActiveHealthFilter('AT_RISK')} title="Projects with milestone warnings or risk items">
-          <div className="pcc-kpi-label">AT RISK</div>
-          <div className="pcc-kpi-val text-warning">{atrisk}</div>
-          <div className="pcc-kpi-sub">Attention required</div>
-        </div>
-        <div className="pcc-kpi-divider" />
-
-        <div className="pcc-kpi-item" onClick={() => setActiveHealthFilter('DELAYED')} title="Projects past planned milestone date">
-          <div className="pcc-kpi-label">DELAYED</div>
-          <div className="pcc-kpi-val text-danger">{delayed}</div>
-          <div className="pcc-kpi-sub">Escalation / Crunch needed</div>
-        </div>
-        <div className="pcc-kpi-divider" />
-
-        <div className="pcc-kpi-item" onClick={() => setActiveHealthFilter('UPCOMING')} title="Projects targeted for imminent market launch">
-          <div className="pcc-kpi-label">UPCOMING LAUNCHES</div>
-          <div className="pcc-kpi-val text-teal">{upcomingCount}</div>
-          <div className="pcc-kpi-sub">Scheduled targets</div>
-        </div>
+        {[
+          {
+            key: 'TOTAL',
+            filter: 'ALL',
+            label: 'TOTAL PROJECTS',
+            val: total,
+            sub: `${activeProjects.length} active · ${total - activeProjects.length} launched`,
+            color: '#102B36',
+            accent: '#008767',
+            bg: 'rgba(0, 135, 103, 0.08)',
+            border: 'rgba(0, 135, 103, 0.2)',
+            icon: Package,
+            title: 'Total tracked packaging projects'
+          },
+          {
+            key: 'ON_TRACK',
+            filter: 'ON_TRACK',
+            label: 'ON TRACK',
+            val: ontrack,
+            sub: 'Within lead time tolerance',
+            color: '#008767',
+            accent: '#008767',
+            bg: 'rgba(0, 135, 103, 0.08)',
+            border: 'rgba(0, 135, 103, 0.2)',
+            icon: CheckCircle2,
+            title: 'Projects progressing on schedule'
+          },
+          {
+            key: 'IN_PROGRESS',
+            filter: 'ALL',
+            label: 'IN PROGRESS',
+            val: inProgress,
+            sub: 'Active stage execution',
+            color: '#0284C7',
+            accent: '#0284C7',
+            bg: 'rgba(2, 132, 199, 0.08)',
+            border: 'rgba(2, 132, 199, 0.2)',
+            icon: Clock,
+            title: 'Projects currently in development pipeline'
+          },
+          {
+            key: 'AT_RISK',
+            filter: 'AT_RISK',
+            label: 'AT RISK',
+            val: atrisk,
+            sub: 'Attention required',
+            color: '#D97706',
+            accent: '#D97706',
+            bg: 'rgba(217, 119, 6, 0.08)',
+            border: 'rgba(217, 119, 6, 0.2)',
+            icon: AlertTriangle,
+            title: 'Projects with milestone warnings or risk items'
+          },
+          {
+            key: 'DELAYED',
+            filter: 'DELAYED',
+            label: 'DELAYED',
+            val: delayed,
+            sub: 'Escalation / Crunch needed',
+            color: '#DC2626',
+            accent: '#DC2626',
+            bg: 'rgba(220, 38, 38, 0.08)',
+            border: 'rgba(220, 38, 38, 0.2)',
+            icon: XCircle,
+            title: 'Projects past planned milestone date'
+          },
+          {
+            key: 'UPCOMING',
+            filter: 'UPCOMING',
+            label: 'UPCOMING LAUNCHES',
+            val: upcomingCount,
+            sub: 'Scheduled targets',
+            color: '#008767',
+            accent: '#008767',
+            bg: 'rgba(0, 135, 103, 0.08)',
+            border: 'rgba(0, 135, 103, 0.2)',
+            icon: Rocket,
+            title: 'Projects targeted for imminent market launch'
+          }
+        ].map(kpi => {
+          const Icon = kpi.icon;
+          const isSelected = activeHealthFilter === kpi.filter && (kpi.key !== 'TOTAL' || activeHealthFilter === 'ALL');
+          return (
+            <div
+              key={kpi.key}
+              className={`pcc-kpi-item ${isSelected ? 'active' : ''}`}
+              onClick={() => setActiveHealthFilter(kpi.filter)}
+              title={kpi.title}
+              style={{
+                borderTop: `3px solid ${isSelected ? kpi.accent : 'transparent'}`
+              }}
+            >
+              <div className="pcc-kpi-header">
+                <span className="pcc-kpi-label">{kpi.label}</span>
+                <span
+                  className="pcc-kpi-icon-wrap"
+                  style={{
+                    backgroundColor: kpi.bg,
+                    borderColor: kpi.border,
+                    color: kpi.accent
+                  }}
+                >
+                  <Icon size={14} strokeWidth={2.4} />
+                </span>
+              </div>
+              <div className="pcc-kpi-val" style={{ color: kpi.color }}>
+                {kpi.val}
+              </div>
+              <div className="pcc-kpi-sub" title={kpi.sub}>
+                {kpi.sub}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* ── 6. DEVELOPMENT PIPELINE (VISUAL WORKFLOW BACKBONE) ── */}

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MAT_TYPES, PRINT_TYPES, isPouch, getMaterialLeadTime, POUCH_PRINT_LEAD, getSpecFields } from '../../constants';
 import { getDefaultSpecSheet, generateDefaultPMCode, getArtworkCode, getPMPrefix, extractPMNumber } from '../../specTemplates';
 import { today, calcProjectMilestones, fmt } from '../../utils';
 import { getPackagingFormats } from '../../api';
+import { FileText, Layers, Plus, Calendar, Clock, AlertTriangle, ArrowLeft, Eye, RefreshCw, Trash2, X, Download, ExternalLink, Image as ImageIcon } from 'lucide-react';
 
 export default function AddProjectPage({ onCancel, onSave, editProject }) {
   const [fgCode, setFgCode] = useState('');
@@ -23,6 +24,11 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
   const [packagingFormats, setPackagingFormats] = useState([]);
   const [expandedSpecRows, setExpandedSpecRows] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [previewArtworkModal, setPreviewArtworkModal] = useState(null);
+  const [isFullScreenPreview, setIsFullScreenPreview] = useState(false);
+
+  const materialFileInputRefs = useRef({});
+  const variantFileInputRefs = useRef({});
 
   useEffect(() => {
     let isMounted = true;
@@ -230,8 +236,29 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
     });
   };
 
+  const validateImageFile = (file) => {
+    if (!file) return false;
+    if (file.size && file.size > 30 * 1024 * 1024) {
+      alert('⚠️ Uploaded file exceeds 30MB. Please use an image file under 30MB.');
+      return false;
+    }
+    const ALLOWED_IMAGE_TYPES = [
+      'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
+      'image/webp', 'image/svg+xml', 'image/bmp', 'image/tiff'
+    ];
+    const ALLOWED_EXTENSIONS = /\.(png|jpg|jpeg|gif|webp|svg|bmp|tiff|tif)$/i;
+    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type) || (!file.type && ALLOWED_EXTENSIONS.test(file.name));
+    if (!isImage) {
+      const ext = file.name.split('.').pop()?.toUpperCase() || 'file';
+      alert(`⛔ ${ext} files are not allowed. Only image formats (PNG, JPG, GIF, WebP, SVG) are accepted.`);
+      return false;
+    }
+    return true;
+  };
+
   const handleArtworkUpload = (matIdx, file) => {
     if (!file) return;
+    if (!validateImageFile(file)) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target.result;
@@ -239,11 +266,55 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
         const copy = [...prev];
         const m = { ...copy[matIdx], artworkUrl: dataUrl, artworkFileName: file.name };
         if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
-        const artworkFiles = [...(m.specSheet.artworkFiles || [])];
-        if (!artworkFiles.some(a => a.name === file.name)) {
-          artworkFiles.unshift({ name: file.name, url: dataUrl, uploadedAt: new Date().toISOString() });
-        }
+        const artworkFiles = [{ name: file.name, url: dataUrl, type: 'image/png', uploadedAt: new Date().toISOString() }];
         m.specSheet = { ...m.specSheet, artworkFiles };
+        if (m.specSheet.variants && m.specSheet.variants.length > 0) {
+          const curVars = [...m.specSheet.variants];
+          curVars[0] = {
+            ...curVars[0],
+            artworkUrl: dataUrl,
+            artworkFileName: file.name,
+            artworkFiles,
+            hasRemovedArtwork: false
+          };
+          m.specSheet.variants = curVars;
+          m.variants = curVars;
+        }
+        copy[matIdx] = m;
+        return copy;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleVariantArtworkUpload = (matIdx, vIdx, file) => {
+    if (!file) return;
+    if (!validateImageFile(file)) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      setMaterials(prev => {
+        const copy = [...prev];
+        const m = { ...copy[matIdx] };
+        if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
+        const curVars = [...(m.specSheet.variants || m.variants || [])];
+        if (curVars[vIdx]) {
+          const vArtFiles = [{ name: file.name, url: dataUrl, type: 'image/png', uploadedAt: new Date().toISOString() }];
+          curVars[vIdx] = {
+            ...curVars[vIdx],
+            artworkUrl: dataUrl,
+            artworkFileName: file.name,
+            artworkFiles: vArtFiles,
+            hasRemovedArtwork: false
+          };
+          m.specSheet.variants = curVars;
+          m.variants = curVars;
+          if (vIdx === 0) {
+            m.artworkUrl = dataUrl;
+            m.artworkFileName = file.name;
+            m.specSheet.artworkFiles = vArtFiles;
+          }
+        }
         copy[matIdx] = m;
         return copy;
       });
@@ -254,13 +325,58 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
   const handleRemoveArtwork = (matIdx) => {
     setMaterials(prev => {
       const copy = [...prev];
-      const m = { ...copy[matIdx], artworkUrl: '', artworkFileName: '' };
+      const m = { ...copy[matIdx], artworkUrl: '', artworkFileName: '', hasRemovedArtwork: true };
       if (m.specSheet) {
-        m.specSheet = { ...m.specSheet, artworkFiles: [] };
+        m.specSheet = { ...m.specSheet, artworkFiles: [], hasRemovedArtwork: true };
+        if (m.specSheet.variants && m.specSheet.variants.length > 0) {
+          const curVars = [...m.specSheet.variants];
+          curVars[0] = {
+            ...curVars[0],
+            artworkUrl: '',
+            artworkFileName: '',
+            artworkFiles: [],
+            hasRemovedArtwork: true
+          };
+          m.specSheet.variants = curVars;
+          m.variants = curVars;
+        }
       }
       copy[matIdx] = m;
       return copy;
     });
+  };
+
+  const handleRemoveVariantArtwork = (matIdx, vIdx) => {
+    setMaterials(prev => {
+      const copy = [...prev];
+      const m = { ...copy[matIdx] };
+      if (!m.specSheet) return copy;
+      const curVars = [...(m.specSheet.variants || m.variants || [])];
+      if (curVars[vIdx]) {
+        curVars[vIdx] = {
+          ...curVars[vIdx],
+          artworkUrl: '',
+          artworkFileName: '',
+          artworkFiles: [],
+          hasRemovedArtwork: true
+        };
+        m.specSheet.variants = curVars;
+        m.variants = curVars;
+        if (vIdx === 0) {
+          m.artworkUrl = '';
+          m.artworkFileName = '';
+          m.specSheet.artworkFiles = [];
+        }
+      }
+      copy[matIdx] = m;
+      return copy;
+    });
+  };
+
+  const handleOpenFullArtwork = (url, name, title) => {
+    if (!url) return;
+    setPreviewArtworkModal({ url, name, title });
+    setIsFullScreenPreview(false);
   };
 
   const handleToggleVariantsMode = (matIdx, isMultiple) => {
@@ -275,9 +391,10 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
           const basePm = m.pmCode || m.specSheet.docHeader?.itemCode || generateDefaultPMCode(m.type, matIdx);
           const baseDigits = parseInt(basePm.match(/\d+$/)?.[0] || '50560', 10);
           const prefix = basePm.replace(/\d+$/, '');
+          const existingArtFiles = (m.artworkUrl) ? [{ name: m.artworkFileName || 'Artwork Proof', url: m.artworkUrl, type: 'image/png' }] : [];
           curVars = [
-            { id: 'var-1', variantName: projectName ? `${projectName} - Variant 1` : 'Variant 1', itemCode: basePm, artworkCode: getArtworkCode(basePm), artworkFiles: [], pantoneColors: ['CMYK'], dimensions: 'Standard', netWeight: skuSize || 'Standard' },
-            { id: 'var-2', variantName: projectName ? `${projectName} - Variant 2` : 'Variant 2', itemCode: `${prefix}${baseDigits + 1}`, artworkCode: getArtworkCode(`${prefix}${baseDigits + 1}`), artworkFiles: [], pantoneColors: ['CMYK'], dimensions: 'Standard', netWeight: skuSize || 'Standard' }
+            { id: 'var-1', variantName: projectName ? `${projectName} - Variant 1` : 'Variant 1', itemCode: basePm, artworkCode: getArtworkCode(basePm), artworkFiles: existingArtFiles, artworkUrl: m.artworkUrl || '', artworkFileName: m.artworkFileName || '', pantoneColors: ['CMYK'], dimensions: 'Standard', netWeight: skuSize || 'Standard' },
+            { id: 'var-2', variantName: projectName ? `${projectName} - Variant 2` : 'Variant 2', itemCode: `${prefix}${baseDigits + 1}`, artworkCode: getArtworkCode(`${prefix}${baseDigits + 1}`), artworkFiles: [], artworkUrl: '', artworkFileName: '', pantoneColors: ['CMYK'], dimensions: 'Standard', netWeight: skuSize || 'Standard' }
           ];
         }
         m.specSheet.variants = curVars;
@@ -292,7 +409,9 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
           variantName: projectName || 'Standard SKU',
           itemCode: basePm,
           artworkCode: getArtworkCode(basePm),
-          artworkFiles: m.specSheet.artworkFiles || [],
+          artworkFiles: m.specSheet.artworkFiles || (m.artworkUrl ? [{ name: m.artworkFileName || 'Artwork Proof', url: m.artworkUrl, type: 'image/png' }] : []),
+          artworkUrl: m.artworkUrl || '',
+          artworkFileName: m.artworkFileName || '',
           pantoneColors: ['CMYK'],
           dimensions: 'Standard Blueprint Dimensions',
           netWeight: skuSize || 'Standard'
@@ -324,6 +443,8 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
         itemCode: newCode,
         artworkCode: getArtworkCode(newCode),
         artworkFiles: [],
+        artworkUrl: '',
+        artworkFileName: '',
         pantoneColors: ['CMYK'],
         dimensions: 'Standard',
         netWeight: skuSize || 'Standard'
@@ -412,13 +533,32 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       specSheet.general.packSize = skuSize.trim() || 'Standard';
       if (m.supplier) specSheet.general.preferredSupplier = m.supplier;
 
-      if (m.artworkUrl) {
+      if (m.artworkUrl && !m.hasRemovedArtwork) {
         if (!specSheet.artworkFiles) specSheet.artworkFiles = [];
         if (!specSheet.artworkFiles.some(a => a.url === m.artworkUrl)) {
-          specSheet.artworkFiles.unshift({ name: m.artworkFileName || `${m.name || m.type} Master Artwork`, url: m.artworkUrl, uploadedAt: new Date().toISOString() });
+          specSheet.artworkFiles.unshift({ name: m.artworkFileName || `${m.name || m.type} Master Artwork`, url: m.artworkUrl, type: 'image/png', uploadedAt: new Date().toISOString() });
         }
+      } else {
+        specSheet.artworkFiles = [];
       }
-      if (m.variants && m.variants.length > 0) specSheet.variants = m.variants;
+      if (m.variants && m.variants.length > 0) {
+        specSheet.variants = m.variants.map(v => {
+          let vFiles = Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0 ? v.artworkFiles : [];
+          if (!v.hasRemovedArtwork && vFiles.length === 0 && v.artworkUrl) {
+            vFiles = [{ name: v.artworkFileName || `${v.variantName || 'Variant'} Artwork`, url: v.artworkUrl, type: 'image/png' }];
+          }
+          if (v.hasRemovedArtwork) {
+            vFiles = [];
+          }
+          return {
+            ...v,
+            artworkUrl: v.hasRemovedArtwork ? '' : (v.artworkUrl || (vFiles[0]?.url || '')),
+            artworkFileName: v.hasRemovedArtwork ? '' : (v.artworkFileName || (vFiles[0]?.name || '')),
+            artworkFiles: vFiles,
+            hasRemovedArtwork: !!v.hasRemovedArtwork
+          };
+        });
+      }
 
       return {
         ...m,
@@ -471,14 +611,15 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
     <div className="add-project-page">
       {/* ── Page Header ── */}
       <div className="add-project-page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <button
             type="button"
             className="btn btn-ghost btn-sm"
             onClick={onCancel}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
           >
-            ← Back
+            <ArrowLeft size={15} />
+            Back
           </button>
           <div>
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-main)' }}>
@@ -497,10 +638,22 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
 
           {/* Project Details Grid */}
           <div className="form-section-card">
-            <div className="form-section-title">📝 Project Details</div>
+            <div className="form-section-header">
+              <div className="form-section-header-left">
+                <div className="form-section-icon-badge">
+                  <FileText size={17} strokeWidth={2.2} />
+                </div>
+                <div className="form-section-title-wrap">
+                  <h2 className="form-section-title">Project Details</h2>
+                  <span className="form-section-subtitle">Basic metadata, category classification, timelines and factory assignment</span>
+                </div>
+              </div>
+            </div>
             <div className="form-grid" style={{ marginBottom: 0 }}>
               <div className="form-group">
-                <label className="form-label">Project Name *</label>
+                <label className="form-label">
+                  Project Name <span className="req-star">*</span>
+                </label>
                 <input
                   className="modern-form-input"
                   value={projectName}
@@ -521,15 +674,15 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
               <div className="form-group">
                 <label className="form-label">Project Type</label>
                 <select className="modern-form-select" value={projectType} onChange={e => { setProjectType(e.target.value); setProjectCategory('NPD'); }}>
-                  <option value="Regular" style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Regular</option>
-                  <option value="Growth"  style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Growth</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Growth">Growth</option>
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Project Category</label>
                 <select className="modern-form-select" value={projectCategory} onChange={e => setProjectCategory(e.target.value)}>
-                  <option value="NPD" style={{ backgroundColor: '#062a30', color: '#ffffff' }}>NPD</option>
-                  <option value="EPD" style={{ backgroundColor: '#062a30', color: '#ffffff' }}>EPD</option>
+                  <option value="NPD">NPD</option>
+                  <option value="EPD">EPD</option>
                 </select>
               </div>
               <div className="form-group">
@@ -542,7 +695,9 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Brief Start Date *</label>
+                <label className="form-label">
+                  Brief Start Date <span className="req-star">*</span>
+                </label>
                 <input
                   className="modern-form-input"
                   type="date"
@@ -552,10 +707,11 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                 />
               </div>
               <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label className="form-label">Launch Timeline</label>
                   {estReadyDate && (
-                    <span style={{ fontSize: '10px', color: 'var(--teal)', fontFamily: 'var(--mono)' }}>
+                    <span className="est-ready-pill" title="Estimated minimum completion date based on material lead times">
+                      <Clock size={11} strokeWidth={2.2} />
                       Est. Ready: {fmt(estReadyDate)}
                     </span>
                   )}
@@ -568,12 +724,18 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                   onChange={e => setTargetLaunchDate(e.target.value)}
                 />
                 {targetLaunchDate && estReadyDate && targetLaunchDate < estReadyDate && (
-                  <div style={{ marginTop: '6px', padding: '8px 10px', borderRadius: '6px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', fontSize: '11px', color: '#fca5a5' }}>
-                    <div style={{ fontWeight: '700', color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span>⚡</span> Crunched Timeline ({Math.round((new Date(estReadyDate) - new Date(targetLaunchDate)) / 86400000)} days compressed)
+                  <div className="crunched-timeline-banner">
+                    <div className="crunched-timeline-header">
+                      <span className="crunched-timeline-title">
+                        <AlertTriangle size={14} strokeWidth={2.5} />
+                        Crunched Timeline
+                      </span>
+                      <span className="crunched-timeline-badge">
+                        {Math.round((new Date(estReadyDate) - new Date(targetLaunchDate)) / 86400000)} days compressed
+                      </span>
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--white-dim)', marginTop: '2px' }}>
-                      Requires Stage 1 (Admin) &amp; Stage 2 (Super Admin) approvals upon creation.
+                    <div className="crunched-timeline-desc">
+                      Target launch precedes estimated readiness date. Requires Stage 1 (Admin) &amp; Stage 2 (Super Admin) approvals upon creation.
                     </div>
                   </div>
                 )}
@@ -581,17 +743,17 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
               <div className="form-group">
                 <label className="form-label">Project Status</label>
                 <select className="modern-form-select" value={status} onChange={e => setStatus(e.target.value)}>
-                  <option style={{ backgroundColor: '#062a30', color: '#ffffff' }}>On Track</option>
-                  <option style={{ backgroundColor: '#062a30', color: '#ffffff' }}>At Risk</option>
-                  <option style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Delayed</option>
+                  <option value="On Track">On Track</option>
+                  <option value="At Risk">At Risk</option>
+                  <option value="Delayed">Delayed</option>
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Risk Level</label>
                 <select className="modern-form-select" value={risk} onChange={e => setRisk(e.target.value)}>
-                  <option style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Low</option>
-                  <option style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Medium</option>
-                  <option style={{ backgroundColor: '#062a30', color: '#ffffff' }}>High</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
                 </select>
               </div>
               <div className="form-group">
@@ -604,12 +766,13 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                 />
               </div>
               <div className="form-group full">
-                <label className="form-label">Description</label>
+                <label className="form-label">Description / Scope Notes</label>
                 <textarea
                   className="form-textarea"
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Any key project notes, constraints, or updates..."
+                  placeholder="Any key project notes, packaging constraints, launch objectives, or updates..."
+                  rows={3}
                 />
               </div>
             </div>
@@ -617,10 +780,29 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
 
           {/* Materials Section */}
           <div className="form-section-card" style={{ marginTop: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div className="form-section-title" style={{ margin: 0 }}>🧱 Packaging Format ({materials.length})</div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={handleAddMaterialRow}>
-                ＋ Add Material
+            <div className="form-section-header">
+              <div className="form-section-header-left">
+                <div className="form-section-icon-badge">
+                  <Layers size={17} strokeWidth={2.2} />
+                </div>
+                <div className="form-section-title-wrap">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2 className="form-section-title">Packaging Format</h2>
+                    <span className="form-count-pill">
+                      {materials.length} {materials.length === 1 ? 'Material' : 'Materials'}
+                    </span>
+                  </div>
+                  <span className="form-section-subtitle">Specify primary, secondary, and tertiary substrates, codes, print formats, and lead times</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={handleAddMaterialRow}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                Add Material
               </button>
             </div>
 
@@ -650,47 +832,24 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                     return (
                       <React.Fragment key={idx}>
                         <tr>
-                          <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '11px', color: 'var(--text-main)' }}>{idx + 1}</td>
-                          <td style={{ width: '155px', minWidth: '155px' }}>
+                          <td style={{ textAlign: 'center', fontWeight: '700', fontSize: '11.5px', color: 'var(--text-secondary)' }}>{idx + 1}</td>
+                          <td style={{ width: '160px', minWidth: '160px' }}>
                             {(() => {
                               const prefix = getPMPrefix(m.type);
                               const currentNum = extractPMNumber(m.pmCode, m.type);
                               const defaultNum = String(50560 + idx);
                               return (
                                 <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    background: 'rgba(4, 28, 32, 0.85)',
-                                    border: '1px solid rgba(0, 243, 255, 0.35)',
-                                    borderRadius: '6px',
-                                    overflow: 'hidden',
-                                    height: '32px',
-                                    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.4)'
-                                  }}
-                                  title={`Selected Packaging Material: ${m.type || 'Standard'} → Prefix: ${prefix}`}
+                                  className="pm-code-input-group"
+                                  title={`Packaging Prefix: ${prefix} — Enter numeric identifier`}
                                 >
-                                  <span
-                                    style={{
-                                      background: 'rgba(0, 243, 255, 0.12)',
-                                      borderRight: '1px solid rgba(0, 243, 255, 0.25)',
-                                      color: '#00f3ff',
-                                      fontFamily: 'monospace',
-                                      fontSize: '11px',
-                                      fontWeight: '700',
-                                      padding: '0 6px',
-                                      height: '100%',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      whiteSpace: 'nowrap',
-                                      userSelect: 'none'
-                                    }}
-                                  >
+                                  <span className="pm-code-prefix">
                                     {prefix}
                                   </span>
                                   <input
                                     type="text"
                                     inputMode="numeric"
+                                    className="pm-code-input"
                                     value={currentNum}
                                     onChange={e => {
                                       const extracted = extractPMNumber(e.target.value, m.type);
@@ -698,21 +857,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                       handleMatChange(idx, 'pmCode', numOnly ? `${prefix}${numOnly}` : '');
                                     }}
                                     placeholder={defaultNum}
-                                    style={{
-                                      flex: 1,
-                                      minWidth: 0,
-                                      width: '100%',
-                                      background: 'transparent',
-                                      border: 'none',
-                                      outline: 'none',
-                                      color: '#ffffff',
-                                      fontFamily: 'monospace',
-                                      fontSize: '11px',
-                                      fontWeight: '600',
-                                      padding: '0 6px',
-                                      height: '100%'
-                                    }}
-                                    title="Enter only the number (e.g. 50560)"
+                                    title="Enter PM code number"
                                   />
                                 </div>
                               );
@@ -735,13 +880,13 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                             >
                               {packagingFormats.length > 0 ? (
                                 packagingFormats.map(fmt => (
-                                  <option key={fmt.id} value={fmt.id} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>
+                                  <option key={fmt.id} value={fmt.id}>
                                     {fmt.name} ({fmt.id})
                                   </option>
                                 ))
                               ) : (
                                 MAT_TYPES.map(t => (
-                                  <option key={t} value={t} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>{t}</option>
+                                  <option key={t} value={t}>{t}</option>
                                 ))
                               )}
                             </select>
@@ -752,14 +897,14 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 className="modern-form-select"
                                 value={m.printType || ''}
                                 onChange={e => handleMatChange(idx, 'printType', e.target.value)}
-                                style={(!m.printType || m.printType === 'Not Applicable') ? { border: '1px solid #f59e0b', color: '#f59e0b' } : {}}
+                                style={(!m.printType || m.printType === 'Not Applicable') ? { borderColor: '#F59E0B', color: '#B45309' } : {}}
                               >
                                 {(!m.printType || m.printType === 'Not Applicable') && (
-                                  <option value="" style={{ backgroundColor: '#062a30', color: '#f59e0b' }}>⚠️ Confirm Print...</option>
+                                  <option value="" style={{ color: '#D97706' }}>⚠️ Select Print Type...</option>
                                 )}
-                                <option value="Digital Print"  style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Digital Print (15d)</option>
-                                <option value="Flexo Print"    style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Flexo Print (21d)</option>
-                                <option value="Gravure Print"  style={{ backgroundColor: '#062a30', color: '#ffffff' }}>Gravure Print (35d)</option>
+                                <option value="Digital Print">Digital Print (15d)</option>
+                                <option value="Flexo Print">Flexo Print (21d)</option>
+                                <option value="Gravure Print">Gravure Print (35d)</option>
                               </select>
                             ) : (
                               <select
@@ -768,7 +913,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 onChange={e => handleMatChange(idx, 'printType', e.target.value)}
                               >
                                 {PRINT_TYPES.map(pt => (
-                                  <option key={pt} value={pt} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>{pt}</option>
+                                  <option key={pt} value={pt}>{pt}</option>
                                 ))}
                               </select>
                             )}
@@ -779,7 +924,6 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                               className="modern-form-input"
                               value={m.briefDate || briefDate}
                               onChange={e => handleMatChange(idx, 'briefDate', e.target.value)}
-                              style={{ fontSize: '11px', padding: '4px 6px' }}
                             />
                           </td>
                           <td>
@@ -788,25 +932,27 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 <input
                                   type="number" min="1" max="365"
                                   className="modern-form-input"
-                                  style={{ width: '55px', padding: '3px 6px', textAlign: 'center' }}
+                                  style={{ width: '55px', padding: '0 6px', textAlign: 'center', height: '35px' }}
                                   value={m.customLeadTime !== undefined && m.customLeadTime !== '' ? m.customLeadTime : 15}
                                   onChange={e => handleMatChange(idx, 'customLeadTime', e.target.value)}
                                 />
-                                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>days</span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>days</span>
                               </div>
                             ) : isPouch(m.type) ? (
                               (!m.printType || m.printType === 'Not Applicable') ? (
-                                <span style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600, background: 'rgba(245,158,11,0.1)', padding: '2px 5px', borderRadius: '4px', border: '1px solid rgba(245,158,11,0.3)' }}>
-                                  ⚠️ Confirm
+                                <span style={{ fontSize: '10.5px', color: '#B45309', fontWeight: 600, background: '#FEF3C7', padding: '3px 7px', borderRadius: '5px', border: '1px solid #FCD34D' }}>
+                                  ⚠️ Required
                                 </span>
                               ) : (
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--teal)' }}>
-                                  ⏱ {getMaterialLeadTime(m)}d
+                                <span className="lead-time-pill">
+                                  <Clock size={11} strokeWidth={2.2} />
+                                  {getMaterialLeadTime(m)}d
                                 </span>
                               )
                             ) : (
-                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>
-                                ⏱ {getMaterialLeadTime(m)}d
+                              <span className="lead-time-pill">
+                                <Clock size={11} strokeWidth={2.2} />
+                                {getMaterialLeadTime(m)}d
                               </span>
                             )}
                           </td>
@@ -815,7 +961,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                               className="modern-form-input"
                               value={m.supplier || ''}
                               onChange={e => handleMatChange(idx, 'supplier', e.target.value)}
-                              placeholder="e.g. Amcor"
+                              placeholder="e.g. TCPL, Amcor"
                             />
                           </td>
                           <td style={{ textAlign: 'center' }}>
@@ -824,10 +970,10 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 type="button"
                                 onClick={() => toggleSpecRow(idx)}
                                 style={{
-                                  background: isSpecOpen ? 'rgba(0,243,255,0.22)' : hasAnySpec ? 'rgba(16,185,129,0.18)' : 'rgba(0,243,255,0.08)',
-                                  border: `1px solid ${hasAnySpec ? '#10b981' : isSpecOpen ? 'var(--cyan)' : 'var(--border-color)'}`,
-                                  color: hasAnySpec ? '#34d399' : isSpecOpen ? 'var(--cyan)' : 'var(--teal)',
-                                  padding: '4px 8px', borderRadius: '4px', fontSize: '10.5px', fontWeight: '700', cursor: 'pointer',
+                                  background: isSpecOpen ? '#EAF2EE' : hasAnySpec ? '#ECFDF5' : '#F8FAF9',
+                                  border: `1px solid ${hasAnySpec ? '#10B981' : isSpecOpen ? 'var(--teal)' : '#D6E0DA'}`,
+                                  color: hasAnySpec ? '#047857' : isSpecOpen ? 'var(--teal)' : 'var(--text-secondary)',
+                                  padding: '4px 9px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer',
                                   display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', transition: 'all 0.15s ease'
                                 }}
                                 title={`Configure specification parameters for ${m.type}`}
@@ -838,9 +984,9 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 fontSize: '9px',
                                 padding: '1px 5px',
                                 borderRadius: '3px',
-                                background: (m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? 'rgba(217,70,239,0.18)' : 'rgba(2,132,199,0.14)',
-                                color: (m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? '#f0abfc' : '#7dd3fc',
-                                border: `1px solid ${(m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? 'rgba(217,70,239,0.35)' : 'rgba(2,132,199,0.25)'}`,
+                                background: (m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? '#FDF2F8' : '#F0F9FF',
+                                color: (m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? '#DB2777' : '#0284C7',
+                                border: `1px solid ${(m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? '#FBCFE8' : '#BAE6FD'}`,
                                 whiteSpace: 'nowrap'
                               }}>
                                 {(m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? `✨ ${(m.specSheet?.variants || m.variants).length} Vars` : '1 SKU'}
@@ -851,9 +997,10 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                             {materials.length > 1 && (
                               <button
                                 type="button"
-                                className="btn btn-danger btn-sm"
+                                className="btn btn-ghost btn-sm"
                                 onClick={() => handleRemoveMaterialRow(idx)}
-                                style={{ padding: '2px 5px' }}
+                                style={{ padding: '3px 6px', color: '#EF4444' }}
+                                title="Remove material"
                               >✕</button>
                             )}
                           </td>
@@ -863,22 +1010,22 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                         {isSpecOpen && (
                           <tr className="spec-sub-row">
                             <td colSpan="10" style={{ padding: '0 !important' }}>
-                              <div style={{ padding: '16px 20px', background: 'rgba(4,28,32,0.98)', borderLeft: '4px solid #14b8a6', borderBottom: '1px solid var(--border-color)', margin: '6px 10px 16px 10px', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
+                              <div style={{ padding: '16px 20px', background: '#F8FAF9', border: '1px solid #DCE5E0', borderLeft: '4px solid var(--teal)', margin: '6px 10px 16px 10px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(16,43,54,0.04)' }}>
 
                                 {/* Drawer Header */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexWrap: 'wrap', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #EEF3F0', flexWrap: 'wrap', gap: '10px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                    <span style={{ background: '#042f2e', border: '1px solid #14b8a6', color: '#5eead4', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                                      📋 Yoga Bar Spec Layout · {m.type}
+                                    <span style={{ background: '#EAF2EE', border: '1px solid rgba(0,135,103,0.25)', color: '#008767', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                                      📋 Spec Layout · {m.type}
                                     </span>
-                                    <span style={{ fontSize: '11px', fontFamily: 'monospace', background: 'rgba(20,184,166,0.15)', border: '1px solid rgba(20,184,166,0.35)', color: '#14b8a6', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                                    <span style={{ fontSize: '11px', fontFamily: 'monospace', background: '#EAF2EE', border: '1px solid rgba(0,135,103,0.25)', color: '#008767', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                                       Doc Code: {currentPmCode}
                                     </span>
-                                    <span style={{ fontSize: '11px', fontFamily: 'monospace', background: 'rgba(236,72,153,0.15)', border: '1px solid rgba(236,72,153,0.35)', color: '#f472b6', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                                    <span style={{ fontSize: '11px', fontFamily: 'monospace', background: '#FDF2F8', border: '1px solid #FBCFE8', color: '#DB2777', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                                       Artwork Code: {currentAwCode}
                                     </span>
                                   </div>
-                                  <button type="button" onClick={() => toggleSpecRow(idx)} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px' }}>
+                                  <button type="button" onClick={() => toggleSpecRow(idx)} style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: '3px 8px', borderRadius: '4px' }}>
                                     ▲ Collapse Specs
                                   </button>
                                 </div>
@@ -950,41 +1097,171 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                         </button>
                                       </div>
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        {(m.specSheet?.variants || m.variants || []).map((v, vIdx) => (
-                                          <div key={v.id || vIdx} style={{ display: 'grid', gridTemplateColumns: '70px 1.2fr 1fr 1fr 30px', gap: '8px', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '6px 10px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                            <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#cbd5e1' }}>Variant {vIdx + 1}</span>
-                                            <input
-                                              className="modern-form-input"
-                                              style={{ fontSize: '11px', padding: '3px 6px' }}
-                                              value={v.variantName || v.name || ''}
-                                              onChange={e => handleUpdateVariantField(idx, vIdx, 'variantName', e.target.value)}
-                                              placeholder="Variant Name (e.g. Trail Mix)"
-                                            />
-                                            <input
-                                              className="modern-form-input"
-                                              style={{ fontSize: '11px', padding: '3px 6px', fontFamily: 'monospace' }}
-                                              value={v.itemCode || v.code || ''}
-                                              onChange={e => handleUpdateVariantField(idx, vIdx, 'itemCode', e.target.value)}
-                                              placeholder="Item Code"
-                                            />
-                                            <input
-                                              className="modern-form-input"
-                                              style={{ fontSize: '11px', padding: '3px 6px', fontFamily: 'monospace' }}
-                                              value={v.artworkCode || ''}
-                                              onChange={e => handleUpdateVariantField(idx, vIdx, 'artworkCode', e.target.value)}
-                                              placeholder="Artwork Code"
-                                            />
-                                            <button
-                                              type="button"
-                                              onClick={() => handleRemoveVariant(idx, vIdx)}
-                                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', textAlign: 'center' }}
-                                              title="Remove Variant"
+                                        {(m.specSheet?.variants || m.variants || []).map((v, vIdx) => {
+                                          const vArtUrl = v.hasRemovedArtwork ? '' : (v.artworkUrl || v.artworkFiles?.[0]?.url || (vIdx === 0 && !m.hasRemovedArtwork ? m.artworkUrl : ''));
+                                          const vArtName = v.hasRemovedArtwork ? '' : (v.artworkFileName || v.artworkFiles?.[0]?.name || (vIdx === 0 && !m.hasRemovedArtwork ? m.artworkFileName : ''));
+                                          const vTitle = `Variant ${vIdx + 1}: ${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`;
+
+                                          return (
+                                            <div
+                                              key={v.id || vIdx}
+                                              style={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '65px 1fr 0.9fr 0.9fr auto 28px',
+                                                gap: '8px',
+                                                alignItems: 'center',
+                                                background: 'rgba(0,0,0,0.3)',
+                                                padding: '6px 10px',
+                                                borderRadius: '4px',
+                                                border: '1px solid rgba(255,255,255,0.08)'
+                                              }}
                                             >
-                                              ✕
-                                            </button>
-                                          </div>
-                                        ))}
-                                      </div>
+                                               <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#cbd5e1' }}>Variant {vIdx + 1}</span>
+                                               <input
+                                                 className="modern-form-input"
+                                                 style={{ fontSize: '11px', padding: '3px 6px' }}
+                                                 value={v.variantName || v.name || ''}
+                                                 onChange={e => handleUpdateVariantField(idx, vIdx, 'variantName', e.target.value)}
+                                                 placeholder="Variant Name (e.g. Trail Mix)"
+                                               />
+                                               <input
+                                                 className="modern-form-input"
+                                                 style={{ fontSize: '11px', padding: '3px 6px', fontFamily: 'monospace' }}
+                                                 value={v.itemCode || v.code || ''}
+                                                 onChange={e => handleUpdateVariantField(idx, vIdx, 'itemCode', e.target.value)}
+                                                 placeholder="Item Code"
+                                               />
+                                               <input
+                                                 className="modern-form-input"
+                                                 style={{ fontSize: '11px', padding: '3px 6px', fontFamily: 'monospace' }}
+                                                 value={v.artworkCode || ''}
+                                                 onChange={e => handleUpdateVariantField(idx, vIdx, 'artworkCode', e.target.value)}
+                                                 placeholder="Artwork Code"
+                                               />
+
+                                               {/* Variant Artwork Controls: Replace, Open Full, Remove */}
+                                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                 <input
+                                                   type="file"
+                                                   ref={el => {
+                                                     if (!variantFileInputRefs.current[idx]) variantFileInputRefs.current[idx] = {};
+                                                     variantFileInputRefs.current[idx][vIdx] = el;
+                                                   }}
+                                                   accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff"
+                                                   onChange={e => {
+                                                     if (e.target.files?.[0]) handleVariantArtworkUpload(idx, vIdx, e.target.files[0]);
+                                                     e.target.value = '';
+                                                   }}
+                                                   style={{ display: 'none' }}
+                                                 />
+
+                                                 {vArtUrl ? (
+                                                   <>
+                                                     <div
+                                                       onClick={() => handleOpenFullArtwork(vArtUrl, vArtName, vTitle)}
+                                                       style={{
+                                                         width: '24px',
+                                                         height: '24px',
+                                                         borderRadius: '3px',
+                                                         border: '1px solid #10b981',
+                                                         overflow: 'hidden',
+                                                         background: '#000',
+                                                         cursor: 'pointer',
+                                                         display: 'flex',
+                                                         alignItems: 'center',
+                                                         justifyContent: 'center',
+                                                         flexShrink: 0
+                                                       }}
+                                                       title="Click to open full-resolution preview"
+                                                     >
+                                                       <img src={vArtUrl} alt="Proof" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                     </div>
+                                                     <button
+                                                       type="button"
+                                                       onClick={() => variantFileInputRefs.current[idx]?.[vIdx]?.click()}
+                                                       style={{
+                                                         background: 'rgba(255,255,255,0.08)',
+                                                         border: '1px solid rgba(255,255,255,0.18)',
+                                                         color: '#cbd5e1',
+                                                         padding: '2px 6px',
+                                                         borderRadius: '3px',
+                                                         fontSize: '9.5px',
+                                                         fontWeight: 600,
+                                                         cursor: 'pointer'
+                                                       }}
+                                                       title="Replace Artwork Image"
+                                                     >
+                                                       🔄 Replace
+                                                     </button>
+                                                     <button
+                                                       type="button"
+                                                       onClick={() => handleOpenFullArtwork(vArtUrl, vArtName, vTitle)}
+                                                       style={{
+                                                         background: 'rgba(14,165,233,0.15)',
+                                                         border: '1px solid #0284c7',
+                                                         color: '#38bdf8',
+                                                         padding: '2px 6px',
+                                                         borderRadius: '3px',
+                                                         fontSize: '9.5px',
+                                                         fontWeight: 600,
+                                                         cursor: 'pointer'
+                                                       }}
+                                                       title="Open Full Screen Preview"
+                                                     >
+                                                       ↗ Open Full
+                                                     </button>
+                                                     <button
+                                                       type="button"
+                                                       onClick={() => handleRemoveVariantArtwork(idx, vIdx)}
+                                                       style={{
+                                                         background: 'rgba(239,68,68,0.15)',
+                                                         border: '1px solid rgba(239,68,68,0.3)',
+                                                         color: '#ef4444',
+                                                         padding: '2px 5px',
+                                                         borderRadius: '3px',
+                                                         fontSize: '9.5px',
+                                                         fontWeight: 700,
+                                                         cursor: 'pointer'
+                                                       }}
+                                                       title="Remove Artwork from Variant"
+                                                     >
+                                                       ✕ Remove
+                                                     </button>
+                                                   </>
+                                                 ) : (
+                                                   <button
+                                                     type="button"
+                                                     onClick={() => variantFileInputRefs.current[idx]?.[vIdx]?.click()}
+                                                     style={{
+                                                       background: 'rgba(2, 132, 199, 0.15)',
+                                                       border: '1px dashed #0284c7',
+                                                       color: '#38bdf8',
+                                                       padding: '2px 8px',
+                                                       borderRadius: '3px',
+                                                       fontSize: '9.5px',
+                                                       fontWeight: 700,
+                                                       cursor: 'pointer',
+                                                       whiteSpace: 'nowrap'
+                                                     }}
+                                                     title="Upload Artwork Image for this variant"
+                                                   >
+                                                     ＋ Artwork
+                                                   </button>
+                                                 )}
+                                               </div>
+
+                                               <button
+                                                 type="button"
+                                                 onClick={() => handleRemoveVariant(idx, vIdx)}
+                                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '13px', textAlign: 'center' }}
+                                                 title="Remove Variant SKU"
+                                               >
+                                                 ✕
+                                               </button>
+                                             </div>
+                                           );
+                                         })}
+                                       </div>
                                     </div>
                                   ) : (
                                     <div style={{ fontSize: '10.5px', color: '#6ee7b7', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -995,34 +1272,34 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 </div>
 
                                 {/* Code Clubbing & General Attributes */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginBottom: '16px', background: 'rgba(6,42,48,0.5)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(20,184,166,0.2)' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px', marginBottom: '16px', background: '#FFFFFF', padding: '16px', borderRadius: '8px', border: '1px solid #E2EBE6' }}>
                                   <div style={{ gridColumn: 'span 2' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#38bdf8' }}>🗂 Clubbed Item Codes (Variant Grouping)</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                      <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)' }}>🗂 Clubbed Item Codes (Variant Grouping)</label>
                                       <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>e.g. PM/PR/FLM/12691,87,86,88,89,12838 or comma-separated variant codes</span>
                                     </div>
                                     <input
                                       className="modern-form-input"
-                                      style={{ width: '100%', fontSize: '11.5px', padding: '6px 10px', fontFamily: 'monospace', background: 'rgba(2,20,24,0.8)', borderColor: m.clubbedCodes ? '#38bdf8' : 'var(--border-color)', color: '#38bdf8' }}
+                                      style={{ width: '100%', fontSize: '12px', fontFamily: 'monospace' }}
                                       value={m.clubbedCodes || m.specSheet?.docHeader?.clubbedCodes || ''}
                                       onChange={e => handleClubbedCodesChange(idx, e.target.value)}
                                       placeholder="e.g. PM/PR/FLM/12691, 12687, 12686, 12688, 12689, 12838"
                                     />
-                                    <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '3px' }}>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
                                       ℹ️ In Yoga Bar packaging standards, multiple product variants share the same physical substrate specification while retaining distinct artwork reference pages.
                                     </div>
                                   </div>
                                   <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--teal)', marginBottom: '4px' }}>Material Structure / Substrate</label>
-                                    <input className="modern-form-input" style={{ width: '100%', fontSize: '11.5px', padding: '6px 10px', background: 'rgba(2,20,24,0.8)' }} value={m.specSheet?.general?.structure || ''} onChange={e => handleGeneralFieldChange(idx, 'structure', e.target.value)} placeholder="e.g. 5 PLY semi virgin Kraft paper or 18 µ Matt Bopp + 12 µ METPET + 40 µ PE" />
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#364B53', marginBottom: '4px' }}>Material Structure / Substrate</label>
+                                    <input className="modern-form-input" style={{ width: '100%', fontSize: '12px' }} value={m.specSheet?.general?.structure || ''} onChange={e => handleGeneralFieldChange(idx, 'structure', e.target.value)} placeholder="e.g. 5 PLY semi virgin Kraft paper or 18 µ Matt Bopp + 12 µ METPET + 40 µ PE" />
                                   </div>
                                   <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--teal)', marginBottom: '4px' }}>Style / Format Construct</label>
-                                    <input className="modern-form-input" style={{ width: '100%', fontSize: '11.5px', padding: '6px 10px', background: 'rgba(2,20,24,0.8)' }} value={m.specSheet?.general?.style || ''} onChange={e => handleGeneralFieldChange(idx, 'style', e.target.value)} placeholder="e.g. RSC or Cylindrical Jar or Die punch Label in Roll Form" />
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#364B53', marginBottom: '4px' }}>Style / Format Construct</label>
+                                    <input className="modern-form-input" style={{ width: '100%', fontSize: '12px' }} value={m.specSheet?.general?.style || ''} onChange={e => handleGeneralFieldChange(idx, 'style', e.target.value)} placeholder="e.g. RSC or Cylindrical Jar or Die punch Label in Roll Form" />
                                   </div>
                                   <div>
-                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--teal)', marginBottom: '4px' }}>Print Colors</label>
-                                    <input className="modern-form-input" style={{ width: '100%', fontSize: '11.5px', padding: '6px 10px', background: 'rgba(2,20,24,0.8)' }} value={m.specSheet?.general?.printColors || ''} onChange={e => handleGeneralFieldChange(idx, 'printColors', e.target.value)} placeholder="e.g. Green & Blue or As per approved AW" />
+                                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#364B53', marginBottom: '4px' }}>Print Colors</label>
+                                    <input className="modern-form-input" style={{ width: '100%', fontSize: '12px' }} value={m.specSheet?.general?.printColors || ''} onChange={e => handleGeneralFieldChange(idx, 'printColors', e.target.value)} placeholder="e.g. Green & Blue or As per approved AW" />
                                   </div>
                                 </div>
 
@@ -1092,81 +1369,290 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
                                 </div>
 
                                 {/* Artwork & References */}
-                                <div style={{ background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: '6px', padding: '12px 14px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span style={{ fontSize: '14px' }}>🎨</span>
-                                      <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#f472b6', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Artwork Reference &amp; Variant Color Proofs</span>
-                                      <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '3px', background: 'rgba(236,72,153,0.2)', color: '#f472b6', fontFamily: 'monospace', fontWeight: 700 }}>{currentAwCode}</span>
-                                    </div>
-                                    <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Mandatory reference sheets for print proofs, Pantone swatches, and dieline specs</span>
-                                  </div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                                    <div>
-                                      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#cbd5e1', marginBottom: '4px' }}>Upload Artwork Proof (PDF / Image)</label>
-                                      <input type="file" accept="image/*,.pdf" onChange={e => handleArtworkUpload(idx, e.target.files[0])} style={{ width: '100%', fontSize: '11px', color: 'var(--text-dim)', padding: '4px 0' }} />
-                                      <div style={{ marginTop: '4px' }}>
-                                        <input className="modern-form-input" style={{ width: '100%', fontSize: '11px', padding: '4px 8px', background: 'rgba(2,20,24,0.8)' }} placeholder="Or paste artwork image URL..." value={m.artworkUrl || ''} onChange={e => handleMatChange(idx, 'artworkUrl', e.target.value)} />
-                                      </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                      {m.artworkUrl ? (
-                                        (() => {
-                                          const isPdf = m.artworkUrl.startsWith('data:application/pdf') ||
-                                            m.artworkFileName?.toLowerCase().endsWith('.pdf') ||
-                                            m.artworkUrl.toLowerCase().endsWith('.pdf');
-                                          return isPdf ? (
-                                            <div style={{ width: '64px', height: '64px', borderRadius: '4px', border: '1px solid #ef4444', overflow: 'hidden', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                              <span style={{ fontSize: '20px' }}>📄</span>
-                                              <span style={{ fontSize: '8px', fontWeight: 900, color: '#ef4444' }}>PDF PROOF</span>
-                                            </div>
-                                          ) : (
-                                            <div style={{ width: '64px', height: '64px', borderRadius: '4px', border: '1px solid rgba(236,72,153,0.5)', overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                              <img src={m.artworkUrl} alt="Artwork" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                            </div>
-                                          );
-                                        })()
-                                      ) : (
-                                        <div style={{ width: '64px', height: '64px', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center', padding: '4px' }}>
-                                          No Artwork Yet
-                                        </div>
-                                      )}
-                                      <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                                        {m.artworkUrl ? (
-                                          <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                              <span style={{ color: '#10b981', fontWeight: 700 }}>✓ Artwork Loaded</span>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRemoveArtwork(idx)}
-                                                style={{
-                                                  background: 'transparent',
-                                                  border: 'none',
-                                                  color: '#ef4444',
-                                                  cursor: 'pointer',
-                                                  fontSize: '10px',
-                                                  fontWeight: 700,
-                                                  padding: '1px 4px'
-                                                }}
-                                                title="Remove this artwork"
-                                              >
-                                                🗑️ Remove
-                                              </button>
-                                            </div>
-                                            {m.artworkFileName && (
-                                              <div style={{ fontSize: '9.5px', color: 'var(--text-main)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {m.artworkFileName}
-                                              </div>
-                                            )}
-                                            <div style={{ fontSize: '9.5px', color: 'var(--text-dim)' }}>Included as dedicated Page 3+ in Yoga Bar spec export</div>
-                                          </div>
-                                        ) : (
-                                          <div>Upload proof or enter URL to embed in specification sheets</div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
+                                <div style={{ background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.25)', borderRadius: '8px', padding: '14px 16px' }}>
+                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                       <span style={{ fontSize: '15px' }}>🎨</span>
+                                       <span style={{ fontSize: '12px', fontWeight: 800, color: '#f472b6', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Artwork Reference &amp; Variant Color Proofs</span>
+                                       <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '4px', background: 'rgba(236,72,153,0.2)', color: '#f472b6', fontFamily: 'monospace', fontWeight: 700 }}>{currentAwCode}</span>
+                                     </div>
+                                     <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Mandatory reference sheets for print proofs, Pantone swatches, and dieline specs (Image formats only)</span>
+                                   </div>
+
+                                   {(m.variants?.length > 1 || m.specSheet?.variants?.length > 1) ? (
+                                     /* Multiple Variants Artwork Cards Grid */
+                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
+                                       {(m.specSheet?.variants || m.variants || []).map((v, vIdx) => {
+                                         const vArtUrl = v.hasRemovedArtwork ? '' : (v.artworkUrl || v.artworkFiles?.[0]?.url || (vIdx === 0 && !m.hasRemovedArtwork ? m.artworkUrl : ''));
+                                         const vArtName = v.hasRemovedArtwork ? '' : (v.artworkFileName || v.artworkFiles?.[0]?.name || (vIdx === 0 && !m.hasRemovedArtwork ? m.artworkFileName : ''));
+                                         const vTitle = `Variant ${vIdx + 1}: ${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`;
+
+                                         return (
+                                           <div
+                                             key={v.id || vIdx}
+                                             style={{
+                                               background: 'rgba(0,0,0,0.25)',
+                                               border: '1px solid rgba(255,255,255,0.08)',
+                                               borderRadius: '6px',
+                                               padding: '10px 12px',
+                                               display: 'flex',
+                                               flexDirection: 'column',
+                                               gap: '8px'
+                                             }}
+                                           >
+                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#e879f9' }}>
+                                                   Variant {vIdx + 1}: {v.variantName || `Variant ${vIdx + 1}`}
+                                                 </span>
+                                                 <span style={{ fontSize: '9.5px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                                   {v.itemCode || 'PM-TBD'}
+                                                 </span>
+                                               </div>
+                                               <span style={{ fontSize: '9.5px', padding: '1px 5px', borderRadius: '3px', background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontFamily: 'monospace', fontWeight: 700 }}>
+                                                 {v.artworkCode || getArtworkCode(v.itemCode || currentPmCode)}
+                                               </span>
+                                             </div>
+
+                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                               {vArtUrl ? (
+                                                 <div
+                                                   onClick={() => handleOpenFullArtwork(vArtUrl, vArtName, vTitle)}
+                                                   style={{
+                                                     width: '60px',
+                                                     height: '60px',
+                                                     borderRadius: '4px',
+                                                     border: '1px solid rgba(236,72,153,0.5)',
+                                                     overflow: 'hidden',
+                                                     background: '#000',
+                                                     display: 'flex',
+                                                     alignItems: 'center',
+                                                     justifyContent: 'center',
+                                                     cursor: 'pointer',
+                                                     flexShrink: 0
+                                                   }}
+                                                   title="Click to view full preview"
+                                                 >
+                                                   <img src={vArtUrl} alt={v.variantName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                 </div>
+                                               ) : (
+                                                 <div style={{ width: '60px', height: '60px', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center', padding: '4px', flexShrink: 0 }}>
+                                                   No Artwork
+                                                 </div>
+                                               )}
+
+                                               <div style={{ flex: 1, minWidth: 0 }}>
+                                                 {vArtUrl ? (
+                                                   <div>
+                                                     <div style={{ fontSize: '10px', color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                       <span>✓</span>
+                                                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{vArtName || 'Artwork Loaded'}</span>
+                                                     </div>
+                                                     <div style={{ display: 'flex', gap: '5px', marginTop: '6px', flexWrap: 'wrap' }}>
+                                                       <button
+                                                         type="button"
+                                                         onClick={() => variantFileInputRefs.current[idx]?.[vIdx]?.click()}
+                                                         style={{
+                                                           background: 'rgba(255,255,255,0.08)',
+                                                           border: '1px solid rgba(255,255,255,0.18)',
+                                                           color: '#cbd5e1',
+                                                           padding: '3px 8px',
+                                                           borderRadius: '4px',
+                                                           fontSize: '10px',
+                                                           fontWeight: 600,
+                                                           cursor: 'pointer'
+                                                         }}
+                                                       >
+                                                         🔄 Replace
+                                                       </button>
+                                                       <button
+                                                         type="button"
+                                                         onClick={() => handleOpenFullArtwork(vArtUrl, vArtName, vTitle)}
+                                                         style={{
+                                                           background: 'rgba(14,165,233,0.15)',
+                                                           border: '1px solid #0284c7',
+                                                           color: '#38bdf8',
+                                                           padding: '3px 8px',
+                                                           borderRadius: '4px',
+                                                           fontSize: '10px',
+                                                           fontWeight: 600,
+                                                           cursor: 'pointer'
+                                                         }}
+                                                       >
+                                                         ↗ Open Full
+                                                       </button>
+                                                       <button
+                                                         type="button"
+                                                         onClick={() => handleRemoveVariantArtwork(idx, vIdx)}
+                                                         style={{
+                                                           background: 'rgba(239,68,68,0.15)',
+                                                           border: '1px solid rgba(239,68,68,0.3)',
+                                                           color: '#ef4444',
+                                                           padding: '3px 8px',
+                                                           borderRadius: '4px',
+                                                           fontSize: '10px',
+                                                           fontWeight: 700,
+                                                           cursor: 'pointer'
+                                                         }}
+                                                       >
+                                                         ✕ Remove
+                                                       </button>
+                                                     </div>
+                                                   </div>
+                                                 ) : (
+                                                   <div>
+                                                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '5px' }}>
+                                                       Attach image proof for this SKU
+                                                     </div>
+                                                     <button
+                                                       type="button"
+                                                       onClick={() => variantFileInputRefs.current[idx]?.[vIdx]?.click()}
+                                                       style={{
+                                                         background: 'rgba(217,70,239,0.15)',
+                                                         border: '1px solid #d946ef',
+                                                         color: '#f0abfc',
+                                                         padding: '4px 10px',
+                                                         borderRadius: '4px',
+                                                         fontSize: '10.5px',
+                                                         fontWeight: 700,
+                                                         cursor: 'pointer'
+                                                       }}
+                                                     >
+                                                       ＋ Upload Proof (Image)
+                                                     </button>
+                                                   </div>
+                                                 )}
+                                               </div>
+                                             </div>
+                                           </div>
+                                         );
+                                       })}
+                                     </div>
+                                   ) : (
+                                     /* Single Variant Artwork Card */
+                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', alignItems: 'center' }}>
+                                       <div>
+                                         <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 700, color: '#cbd5e1', marginBottom: '4px' }}>
+                                           Upload Artwork Proof (PNG, JPG, WebP, SVG)
+                                         </label>
+                                         <input
+                                           type="file"
+                                           ref={el => { materialFileInputRefs.current[idx] = el; }}
+                                           accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff"
+                                           onChange={e => {
+                                             if (e.target.files?.[0]) handleArtworkUpload(idx, e.target.files[0]);
+                                             e.target.value = '';
+                                           }}
+                                           style={{ width: '100%', fontSize: '11px', color: 'var(--text-dim)', padding: '4px 0' }}
+                                         />
+                                         <div style={{ marginTop: '4px' }}>
+                                           <input
+                                             className="modern-form-input"
+                                             style={{ width: '100%', fontSize: '11px', padding: '4px 8px', background: 'rgba(2,20,24,0.8)' }}
+                                             placeholder="Or paste artwork image URL..."
+                                             value={m.artworkUrl || ''}
+                                             onChange={e => handleMatChange(idx, 'artworkUrl', e.target.value)}
+                                           />
+                                         </div>
+                                       </div>
+
+                                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                         {m.artworkUrl ? (
+                                           <div
+                                             onClick={() => handleOpenFullArtwork(m.artworkUrl, m.artworkFileName || `${m.name || 'Material'} Artwork`, `${m.name || 'Material'} (${currentPmCode}) — Artwork Reference`)}
+                                             style={{
+                                               width: '64px',
+                                               height: '64px',
+                                               borderRadius: '4px',
+                                               border: '1px solid rgba(236,72,153,0.5)',
+                                               overflow: 'hidden',
+                                               background: '#000',
+                                               display: 'flex',
+                                               alignItems: 'center',
+                                               justifyContent: 'center',
+                                               cursor: 'pointer',
+                                               flexShrink: 0
+                                             }}
+                                             title="Click to view full preview"
+                                           >
+                                             <img src={m.artworkUrl} alt="Artwork" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                           </div>
+                                         ) : (
+                                           <div style={{ width: '64px', height: '64px', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center', padding: '4px', flexShrink: 0 }}>
+                                             No Artwork Yet
+                                           </div>
+                                         )}
+
+                                         <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                                           {m.artworkUrl ? (
+                                             <div>
+                                               <div style={{ color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                 <span>✓ Artwork Loaded</span>
+                                               </div>
+                                               {m.artworkFileName && (
+                                                 <div style={{ fontSize: '9.5px', color: 'var(--text-main)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                   {m.artworkFileName}
+                                                 </div>
+                                               )}
+                                               <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                                                 <button
+                                                   type="button"
+                                                   onClick={() => materialFileInputRefs.current[idx]?.click()}
+                                                   style={{
+                                                     background: 'rgba(255,255,255,0.08)',
+                                                     border: '1px solid rgba(255,255,255,0.18)',
+                                                     color: '#cbd5e1',
+                                                     padding: '3px 8px',
+                                                     borderRadius: '4px',
+                                                     fontSize: '10px',
+                                                     fontWeight: 600,
+                                                     cursor: 'pointer'
+                                                   }}
+                                                 >
+                                                   🔄 Replace
+                                                 </button>
+                                                 <button
+                                                   type="button"
+                                                   onClick={() => handleOpenFullArtwork(m.artworkUrl, m.artworkFileName || `${m.name || 'Material'} Artwork`, `${m.name || 'Material'} (${currentPmCode}) — Artwork Reference`)}
+                                                   style={{
+                                                     background: 'rgba(14,165,233,0.15)',
+                                                     border: '1px solid #0284c7',
+                                                     color: '#38bdf8',
+                                                     padding: '3px 8px',
+                                                     borderRadius: '4px',
+                                                     fontSize: '10px',
+                                                     fontWeight: 600,
+                                                     cursor: 'pointer'
+                                                   }}
+                                                 >
+                                                   ↗ Open Full
+                                                 </button>
+                                                 <button
+                                                   type="button"
+                                                   onClick={() => handleRemoveArtwork(idx)}
+                                                   style={{
+                                                     background: 'rgba(239,68,68,0.15)',
+                                                     border: '1px solid rgba(239,68,68,0.3)',
+                                                     color: '#ef4444',
+                                                     padding: '3px 8px',
+                                                     borderRadius: '4px',
+                                                     fontSize: '10px',
+                                                     fontWeight: 700,
+                                                     cursor: 'pointer'
+                                                   }}
+                                                 >
+                                                   ✕ Remove
+                                                 </button>
+                                               </div>
+                                             </div>
+                                           ) : (
+                                             <div>Upload image proof or enter URL to embed in specification sheets</div>
+                                           )}
+                                         </div>
+                                       </div>
+                                     </div>
+                                   )}
+                                 </div>
 
                               </div>
                             </td>
@@ -1189,6 +1675,125 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
           </button>
         </div>
       </form>
+
+      {/* ── Fullscreen Artwork Lightbox Preview Modal ── */}
+      {previewArtworkModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: 'rgba(3, 14, 18, 0.92)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: isFullScreenPreview ? 0 : '20px'
+          }}
+          onClick={() => setPreviewArtworkModal(null)}
+        >
+          <div
+            style={{
+              maxWidth: isFullScreenPreview ? '100vw' : '95vw',
+              width: isFullScreenPreview ? '100vw' : '980px',
+              maxHeight: isFullScreenPreview ? '100vh' : '92vh',
+              height: isFullScreenPreview ? '100vh' : 'auto',
+              background: '#ffffff',
+              borderRadius: isFullScreenPreview ? 0 : '12px',
+              border: isFullScreenPreview ? 'none' : '1px solid #cbd5e1',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '12px 18px',
+              background: '#f8fafc',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ fontSize: '15px' }}>🖼️</span>
+                <span style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {previewArtworkModal.title || previewArtworkModal.name || 'Artwork Full Resolution Preview'}
+                </span>
+                <span style={{ fontSize: '10px', background: '#dcfce7', color: '#15803d', padding: '1px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                  Image Proof
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setIsFullScreenPreview(!isFullScreenPreview)}
+                  style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  title={isFullScreenPreview ? "Exit Fullscreen" : "Toggle Fullscreen"}
+                >
+                  {isFullScreenPreview ? '⤓ Window' : '⤢ Fullscreen'}
+                </button>
+                <a
+                  href={previewArtworkModal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline btn-sm"
+                  style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none' }}
+                  title="Open in new browser tab"
+                >
+                  ↗ New Tab
+                </a>
+                <a
+                  href={previewArtworkModal.url}
+                  download={previewArtworkModal.name || 'artwork.png'}
+                  className="btn btn-outline btn-sm"
+                  style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none' }}
+                  title="Download original file"
+                >
+                  ⬇ Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewArtworkModal(null)}
+                  style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', fontSize: '16px', lineHeight: 1 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#090d16',
+              minHeight: isFullScreenPreview ? 'calc(100vh - 55px)' : '480px'
+            }}>
+              <img
+                src={previewArtworkModal.url}
+                alt={previewArtworkModal.name || 'Artwork Preview'}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: isFullScreenPreview ? 'calc(100vh - 90px)' : '78vh',
+                  objectFit: 'contain',
+                  borderRadius: '4px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

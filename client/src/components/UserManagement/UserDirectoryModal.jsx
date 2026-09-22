@@ -284,12 +284,12 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
     return (
       <div
         style={{
-          background: 'rgba(7, 36, 42, 0.95)',
-          border: `1.5px solid ${borderColor || 'rgba(0, 212, 200, 0.35)'}`,
+          background: 'var(--card-bg, #ffffff)',
+          border: `1.5px solid ${borderColor || 'var(--border-color)'}`,
           borderRadius: 12,
           padding: isCompact ? '10px 8px' : '12px 14px',
           width: isCompact ? '100%' : isRoot ? '290px' : '260px',
-          boxShadow: isRoot ? '0 0 20px rgba(239, 68, 68, 0.25)' : '0 4px 14px rgba(0,0,0,0.35)',
+          boxShadow: isRoot ? '0 4px 20px rgba(239, 68, 68, 0.15)' : '0 4px 14px rgba(0,0,0,0.06)',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
@@ -437,14 +437,14 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
       <div
         key={u.email || u.name}
         style={{
-          background: 'rgba(7, 36, 42, 0.85)',
-          border: isSuper ? '1px solid rgba(239, 68, 68, 0.45)' : isAdm ? '1px solid rgba(124, 58, 237, 0.4)' : '1px solid rgba(20, 184, 166, 0.3)',
+          background: 'var(--card-bg, #ffffff)',
+          border: isSuper ? '1px solid rgba(239, 68, 68, 0.45)' : isAdm ? '1px solid rgba(124, 58, 237, 0.4)' : '1px solid var(--border-color)',
           borderRadius: 12,
           padding: '16px',
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.05)'
         }}
       >
         {isCur && (
@@ -652,8 +652,8 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
                     borderRadius: '4px',
                     border: 'none',
                     cursor: 'pointer',
-                    background: filterRole === r ? 'var(--teal)' : 'rgba(255,255,255,0.06)',
-                    color: filterRole === r ? '#062a30' : 'var(--text-muted)'
+                    background: filterRole === r ? 'var(--teal)' : 'var(--surface-secondary, #F4F8F6)',
+                    color: filterRole === r ? '#ffffff' : 'var(--text-secondary)'
                   }}
                 >
                   {r === 'all' ? `All (${users.length})` : r === 'superadmin' ? 'Super Admin' : r === 'admin' ? 'Admins' : 'Updaters'}
@@ -756,9 +756,9 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
                         <div style={{
                           padding: '5px 16px',
                           borderRadius: 20,
-                          background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(7, 36, 42, 0.95))',
+                          background: '#F3E8FF',
                           border: '1.5px solid #7c3aed',
-                          color: '#c084fc',
+                          color: '#6b21a8',
                           fontSize: '11.5px',
                           fontWeight: 800,
                           letterSpacing: '0.6px',
@@ -846,9 +846,9 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
                         <div style={{
                           padding: '5px 16px',
                           borderRadius: 20,
-                          background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.25), rgba(7, 36, 42, 0.95))',
+                          background: '#E0F2FE',
                           border: '1.5px solid #0284c7',
-                          color: '#38bdf8',
+                          color: '#0369a1',
                           fontSize: '11.5px',
                           fontWeight: 800,
                           letterSpacing: '0.6px',
@@ -1008,15 +1008,15 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
           )}
 
           {activeTab === 'matrix' && (
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border-color, #E2EBE6)', borderRadius: '8px', background: 'var(--card-bg, #FFFFFF)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                 <thead>
-                  <tr style={{ background: '#062024', borderBottom: '2px solid var(--teal)' }}>
-                    <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-main)' }}>Action / Capability</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', color: '#f87171' }}>👑 Super Admin (Packaging Head)</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', color: '#c084fc' }}>🛡 Admins (Regular &amp; Growth PM)</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center', color: '#2dd4bf' }}>⚡ Updaters (Executives &amp; Interns)</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'left', color: '#94a3b8' }}>Operational Governance</th>
+                  <tr style={{ background: 'var(--surface-secondary, #F4F8F6)', borderBottom: '2px solid var(--teal, #008767)' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-main, #102B36)' }}>Action / Capability</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', color: '#DC2626' }}>👑 Super Admin (Packaging Head)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', color: '#7C3AED' }}>🛡 Admins (Regular &amp; Growth PM)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', color: '#008767' }}>⚡ Updaters (Executives &amp; Interns)</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-secondary, #526B74)' }}>Operational Governance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1024,21 +1024,21 @@ export default function UserDirectoryModal({ isOpen, onClose, currentUser, onUse
                     <tr
                       key={idx}
                       style={{
-                        background: idx % 2 === 0 ? 'rgba(7, 36, 42, 0.6)' : 'rgba(10, 42, 48, 0.3)',
-                        borderBottom: '1px solid rgba(255,255,255,0.05)'
+                        background: idx % 2 === 0 ? 'var(--card-bg, #FFFFFF)' : 'var(--surface-secondary, #F4F8F6)',
+                        borderBottom: '1px solid var(--border-subtle, #F2F7F4)'
                       }}
                     >
-                      <td style={{ padding: '8px 12px', fontWeight: '600', color: '#f1f5f9' }}>{p.name}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                        {p.superadmin ? <span style={{ color: '#34d399', fontWeight: '800' }}>✓ YES</span> : <span style={{ color: '#ef4444', fontWeight: '800' }}>✕ NO</span>}
+                      <td style={{ padding: '9px 12px', fontWeight: '600', color: 'var(--text-main, #102B36)' }}>{p.name}</td>
+                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                        {p.superadmin ? <span style={{ color: '#008767', fontWeight: '800' }}>✓ YES</span> : <span style={{ color: '#DC2626', fontWeight: '800' }}>✕ NO</span>}
                       </td>
-                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                        {p.admin ? <span style={{ color: '#34d399', fontWeight: '800' }}>✓ YES</span> : <span style={{ color: '#64748b', fontWeight: '800' }}>✕ NO</span>}
+                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                        {p.admin ? <span style={{ color: '#008767', fontWeight: '800' }}>✓ YES</span> : <span style={{ color: '#94A3B8', fontWeight: '800' }}>✕ NO</span>}
                       </td>
-                      <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                        {p.updater ? <span style={{ color: '#34d399', fontWeight: '800' }}>✓ YES</span> : <span style={{ color: '#f87171', fontWeight: '800' }}>✕ NO</span>}
+                      <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                        {p.updater ? <span style={{ color: '#008767', fontWeight: '800' }}>✓ YES</span> : <span style={{ color: '#DC2626', fontWeight: '800' }}>✕ NO</span>}
                       </td>
-                      <td style={{ padding: '8px 12px', color: '#94a3b8', fontSize: '10px' }}>{p.note}</td>
+                      <td style={{ padding: '9px 12px', color: 'var(--text-secondary, #526B74)', fontSize: '10.5px' }}>{p.note}</td>
                     </tr>
                   ))}
                 </tbody>

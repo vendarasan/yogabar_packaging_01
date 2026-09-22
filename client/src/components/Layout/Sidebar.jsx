@@ -61,10 +61,19 @@ export default function Sidebar({
     <aside className={`sidebar ${isMobileNavOpen ? 'mobile-open' : ''}`}>
       {/* BRANDING */}
       <div className="sidebar-brand">
-        <div className="brand-icon"><Package size={18} /></div>
+        <img
+          src="/yogabar-logo.png"
+          alt="Yoga Bar"
+          style={{ height: '30px', maxWidth: '95px', objectFit: 'contain' }}
+          onError={(e) => {
+            e.target.style.display = 'none';
+            if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+          }}
+        />
+        <div className="brand-icon" style={{ display: 'none' }}><Package size={18} /></div>
         <div className="brand-text">
-          <div className="brand-title">Packaging Development</div>
-          <div className="brand-subtitle">ENTERPRISE</div>
+          <div className="brand-title" style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-main)' }}>Packaging Dev</div>
+          <div className="brand-subtitle" style={{ fontSize: '9px', fontWeight: 700, color: 'var(--teal)', letterSpacing: '1px' }}>PDMP PORTAL</div>
         </div>
         <button
           className="sidebar-mobile-close"

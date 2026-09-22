@@ -197,7 +197,7 @@ export default function Risks({ projects = [], onOpenProject, onRefreshProjects,
 
         {/* ── TAB CONTENT ── */}
         {activeTab === 'live' ? (
-          <div className="modern-mat-table-wrap" style={{ margin: '16px' }}>
+          <div className="table-scroll-wrap modern-mat-table-wrap">
             {filteredLiveRisks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={32} style={{ color: 'var(--teal)', opacity: 0.5, marginBottom: '8px' }} />
@@ -287,7 +287,7 @@ export default function Risks({ projects = [], onOpenProject, onRefreshProjects,
             )}
           </div>
         ) : (
-          <div className="modern-mat-table-wrap" style={{ margin: '16px' }}>
+          <div className="table-scroll-wrap modern-mat-table-wrap">
             <table className="modern-mat-table">
               <thead>
                 <tr>

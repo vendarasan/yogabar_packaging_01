@@ -308,9 +308,9 @@ export default function ExecutiveReportingModal({ isOpen, onClose, projects = []
                         value={selectedProjectId}
                         onChange={(e) => setSelectedProjectId(e.target.value)}
                         style={{
-                          background: 'rgba(6, 23, 26, 0.9)',
-                          border: '1px solid var(--border-color, rgba(255, 255, 255, 0.14))',
-                          color: '#fff',
+                          background: 'var(--card-bg, #ffffff)',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-main)',
                           borderRadius: '8px',
                           padding: '6px 12px',
                           fontSize: '12px',

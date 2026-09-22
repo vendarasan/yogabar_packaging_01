@@ -289,7 +289,7 @@ export default function WebhookManagerModal({ isOpen, onClose }) {
 
             {/* Add Webhook Form */}
             {showAddForm && (
-              <form onSubmit={handleCreateWebhook} style={{ padding: '14px', borderRadius: '10px', background: 'rgba(7, 26, 29, 0.7)', border: '1px solid var(--border-color, rgba(255, 255, 255, 0.12))', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <form onSubmit={handleCreateWebhook} style={{ padding: '14px', borderRadius: '10px', background: 'var(--surface-secondary, #F4F8F6)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-main)' }}>Register Outbound Endpoint</div>
                 <div>
                   <label style={{ display: 'block', fontSize: '10.5px', color: 'var(--text-muted)', marginBottom: '3px' }}>Subscriber Name</label>
@@ -299,7 +299,7 @@ export default function WebhookManagerModal({ isOpen, onClose }) {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. ERP Production Bus"
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(4, 18, 20, 0.8)', border: '1px solid var(--border-color)', color: '#fff', fontSize: '11.5px', boxSizing: 'border-box', outline: 'none' }}
+                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11.5px', boxSizing: 'border-box', outline: 'none' }}
                   />
                 </div>
                 <div>
@@ -310,7 +310,7 @@ export default function WebhookManagerModal({ isOpen, onClose }) {
                     value={formUrl}
                     onChange={(e) => setFormUrl(e.target.value)}
                     placeholder="https://api.yourdomain.com/webhooks"
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(4, 18, 20, 0.8)', border: '1px solid var(--border-color)', color: '#fff', fontSize: '11.5px', boxSizing: 'border-box', outline: 'none' }}
+                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11.5px', boxSizing: 'border-box', outline: 'none' }}
                   />
                 </div>
                 <div>
@@ -320,7 +320,7 @@ export default function WebhookManagerModal({ isOpen, onClose }) {
                     value={formSecret}
                     onChange={(e) => setFormSecret(e.target.value)}
                     placeholder="Shared secret for X-Signature-SHA256"
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'rgba(4, 18, 20, 0.8)', border: '1px solid var(--border-color)', color: '#fff', fontSize: '11.5px', fontFamily: 'var(--font-mono, monospace)', boxSizing: 'border-box', outline: 'none' }}
+                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '11.5px', fontFamily: 'var(--font-mono, monospace)', boxSizing: 'border-box', outline: 'none' }}
                   />
                 </div>
                 <div>
@@ -374,8 +374,8 @@ export default function WebhookManagerModal({ isOpen, onClose }) {
                         padding: '12px 14px',
                         borderRadius: '10px',
                         cursor: 'pointer',
-                        background: isSelected ? 'rgba(0, 212, 200, 0.08)' : 'rgba(7, 26, 29, 0.5)',
-                        border: isSelected ? '1px solid var(--teal, #00d4c8)' : '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+                        background: isSelected ? 'var(--brand-mint-light, #EAF2EE)' : 'var(--card-bg, #ffffff)',
+                        border: isSelected ? '1px solid var(--primary, #008767)' : '1px solid var(--border-color)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '6px',
@@ -487,8 +487,8 @@ export default function WebhookManagerModal({ isOpen, onClose }) {
                       style={{
                         padding: '10px 12px',
                         borderRadius: '8px',
-                        background: 'rgba(7, 26, 29, 0.5)',
-                        border: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+                        background: 'var(--card-bg, #ffffff)',
+                        border: '1px solid var(--border-color)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '6px'

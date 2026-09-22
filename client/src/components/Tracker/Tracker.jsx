@@ -246,9 +246,9 @@ export default function Tracker({
             <table className="modern-mat-table" style={{ tableLayout: 'fixed', minWidth: '2260px', width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
-                  <th className="sticky-proj-th-expand" style={{ width: '40px', padding: '8px 4px', textAlign: 'center', position: 'sticky', left: 0, top: 0, zIndex: 50, backgroundColor: '#0B2529' }}></th>
-                  <th className="sticky-proj-th-fg" style={{ width: '130px', position: 'sticky', left: '40px', top: 0, zIndex: 50, backgroundColor: '#0B2529' }}>FG Code</th>
-                  <th className="sticky-proj-th-name" style={{ width: '210px', position: 'sticky', left: '170px', top: 0, zIndex: 50, backgroundColor: '#0B2529', borderRight: '1px solid var(--border-color)', boxShadow: '2px 1px 6px rgba(0, 0, 0, 0.35)' }}>Project Name</th>
+                  <th className="sticky-proj-th-expand" style={{ width: '40px', padding: '8px 4px', textAlign: 'center', position: 'sticky', left: 0, top: 0, zIndex: 50, backgroundColor: 'var(--card-bg)' }}></th>
+                  <th className="sticky-proj-th-fg" style={{ width: '130px', position: 'sticky', left: '40px', top: 0, zIndex: 50, backgroundColor: 'var(--card-bg)' }}>FG Code</th>
+                  <th className="sticky-proj-th-name" style={{ width: '210px', position: 'sticky', left: '170px', top: 0, zIndex: 50, backgroundColor: 'var(--card-bg)', borderRight: '1px solid var(--border-color)', boxShadow: '2px 1px 6px rgba(16, 43, 54, 0.08)' }}>Project Name</th>
                   <th style={{ width: '160px' }}>Stage &amp; Days Left</th>
                   <th style={{ width: '50px', textAlign: 'center' }}>LT</th>
                   <th style={{ width: '110px', textAlign: 'center' }}>Status</th>
@@ -282,7 +282,7 @@ export default function Tracker({
                   return (
                     <React.Fragment key={p.id}>
                       <tr className={`${rowCls} ${editingFG === p.id || editingFactory === p.id || editingDesc === p.id ? 'tracker-edit-row' : ''}`}>
-                        <td className="expand-cell sticky-proj-td-expand" style={{ boxShadow: `inset 3px 0 0 ${lt === 'ok' ? 'var(--green)' : lt === 'warn' ? 'var(--amber)' : 'var(--red)'}`, textAlign: 'center', padding: '6px 4px', position: 'sticky', left: 0, zIndex: 30, backgroundColor: '#0B2529' }}>
+                        <td className="expand-cell sticky-proj-td-expand" style={{ boxShadow: `inset 3px 0 0 ${lt === 'ok' ? 'var(--green)' : lt === 'warn' ? 'var(--amber)' : 'var(--red)'}`, textAlign: 'center', padding: '6px 4px', position: 'sticky', left: 0, zIndex: 30, backgroundColor: 'var(--card-bg)' }}>
                           <button
                             type="button"
                             className={`row-expand-btn ${exp ? 'expanded' : ''}`}
@@ -294,7 +294,7 @@ export default function Tracker({
                         </td>
 
                         {/* FG CODE CELL */}
-                        <td className="sticky-proj-td-fg" style={{ position: 'sticky', left: '40px', zIndex: 30, backgroundColor: '#0B2529' }}>
+                        <td className="sticky-proj-td-fg" style={{ position: 'sticky', left: '40px', zIndex: 30, backgroundColor: 'var(--card-bg)' }}>
                           <div className="editable-cell">
                             {editingFG === p.id ? (
                               <div className="inline-edit-wrap">
@@ -348,9 +348,9 @@ export default function Tracker({
                              position: 'sticky',
                              left: '170px',
                              zIndex: 30,
-                             backgroundColor: '#0B2529',
+                             backgroundColor: 'var(--card-bg)',
                              borderRight: '1px solid var(--border-color)',
-                             boxShadow: '2px 0 6px rgba(0, 0, 0, 0.3)'
+                             boxShadow: '2px 0 6px rgba(16, 43, 54, 0.08)'
                            }}
                            title={`${p.projectName} — Click to open Project Detail Drawer`}
                            onClick={() => onOpenProjectDrawer && onOpenProjectDrawer(p)}
@@ -450,13 +450,38 @@ export default function Tracker({
                         </td>
 
                         {/* SKU SIZE */}
-                        <td style={{ textAlign: 'center', fontSize: '10px', fontFamily: 'var(--mono)', color: 'var(--cyan)', whiteSpace: 'nowrap' }}>
+                        <td
+                          style={{
+                            textAlign: 'center',
+                            fontSize: '10.5px',
+                            fontFamily: 'var(--mono)',
+                            color: 'var(--text-main)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '95px',
+                            padding: '0 8px'
+                          }}
+                          title={p.skuSize || p.grammage || ''}
+                        >
                           {p.skuSize || p.grammage || <span style={{ opacity: 0.35 }}>—</span>}
                         </td>
 
                         {/* PROJECT TYPE */}
-                        <td style={{ textAlign: 'center', fontSize: '10px', whiteSpace: 'nowrap' }}>
-                          <span style={{ background: 'var(--navy-light)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                        <td style={{ textAlign: 'center', fontSize: '10px', whiteSpace: 'nowrap', maxWidth: '95px', padding: '0 6px' }}>
+                          <span
+                            style={{
+                              background: (p.projectType === 'Growth' || p.projectType === 'NPD') ? 'rgba(2, 132, 199, 0.08)' : 'rgba(0, 135, 103, 0.08)',
+                              color: (p.projectType === 'Growth' || p.projectType === 'NPD') ? '#0284C7' : '#008767',
+                              padding: '2.5px 8px',
+                              borderRadius: '4px',
+                              border: `1px solid ${(p.projectType === 'Growth' || p.projectType === 'NPD') ? 'rgba(2, 132, 199, 0.25)' : 'rgba(0, 135, 103, 0.22)'}`,
+                              fontWeight: '600',
+                              fontSize: '9.5px',
+                              letterSpacing: '0.2px',
+                              display: 'inline-block'
+                            }}
+                          >
                             {p.projectType || 'Regular'}
                           </span>
                         </td>

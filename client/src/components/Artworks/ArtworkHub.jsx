@@ -430,18 +430,18 @@ export default function ArtworkHub({
             value={artworkStatusFilter}
             onChange={e => setArtworkStatusFilter(e.target.value)}
           >
-            <option value="" style={{ backgroundColor: '#062a30' }}>All Artworks</option>
-            <option value="UPLOADED" style={{ backgroundColor: '#062a30' }}>✓ Uploaded ({stats.uploaded})</option>
-            <option value="PENDING" style={{ backgroundColor: '#062a30' }}>⏳ Pending Upload ({stats.pending})</option>
+            <option value="">All Artworks</option>
+            <option value="UPLOADED">✓ Uploaded ({stats.uploaded})</option>
+            <option value="PENDING">⏳ Pending Upload ({stats.pending})</option>
           </select>
           <select
             className="filter-sel"
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
           >
-            <option value="" style={{ backgroundColor: '#062a30' }}>All Packaging Types</option>
+            <option value="">All Packaging Types</option>
             {materialTypes.map(t => (
-              <option key={t} value={t} style={{ backgroundColor: '#062a30' }}>{t}</option>
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
 
@@ -453,9 +453,9 @@ export default function ArtworkHub({
               onChange={e => setGroupBy(e.target.value)}
               style={{ margin: 0 }}
             >
-              <option value="project" style={{ backgroundColor: '#062a30' }}>Group by Project</option>
-              <option value="status" style={{ backgroundColor: '#062a30' }}>Group by Artwork Status</option>
-              <option value="type" style={{ backgroundColor: '#062a30' }}>Group by Material Type</option>
+              <option value="project">Group by Project</option>
+              <option value="status">Group by Artwork Status</option>
+              <option value="type">Group by Material Type</option>
             </select>
             <div style={{
               display: 'inline-flex',
@@ -477,7 +477,7 @@ export default function ArtworkHub({
                     fontWeight: 700,
                     cursor: 'pointer',
                     border: 'none',
-                    background: viewMode === mode ? '#ec4899' : 'transparent',
+                    background: viewMode === mode ? 'var(--primary, #008767)' : 'transparent',
                     color: viewMode === mode ? '#ffffff' : 'var(--text-dim)',
                     transition: 'all 0.15s',
                     whiteSpace: 'nowrap'
@@ -497,7 +497,7 @@ export default function ArtworkHub({
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))',
         gap: '12px',
-        background: 'rgba(6, 42, 48, 0.45)',
+        background: 'var(--surface-secondary, #F4F8F6)',
         borderBottom: '1px solid var(--border-color)'
       }}>
         <div style={{
@@ -552,15 +552,15 @@ export default function ArtworkHub({
           background: 'var(--card-bg)',
           padding: '10px 14px',
           borderRadius: '8px',
-          border: '1px solid rgba(236, 72, 153, 0.3)',
+          border: '1px solid rgba(0, 135, 103, 0.25)',
           display: 'flex',
           alignItems: 'center',
           gap: '10px'
         }}>
           <div style={{ fontSize: '24px' }}>🚀</div>
           <div>
-            <div style={{ fontSize: '10px', color: '#f472b6', fontWeight: 700, textTransform: 'uppercase' }}>In VPDF / Printing</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#ec4899' }}>{stats.inVpdf}</div>
+            <div style={{ fontSize: '10px', color: 'var(--primary, #008767)', fontWeight: 700, textTransform: 'uppercase' }}>In VPDF / Printing</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--primary, #008767)' }}>{stats.inVpdf}</div>
           </div>
         </div>
       </div>
@@ -600,20 +600,21 @@ export default function ArtworkHub({
                   </span>
                 )}
                 <span style={{
-                  background: 'rgba(236, 72, 153, 0.15)',
-                  color: '#f472b6',
-                  padding: '1px 8px',
+                  background: 'var(--brand-mint-light, #EAF2EE)',
+                  color: 'var(--primary, #008767)',
+                  padding: '2px 8px',
                   borderRadius: '12px',
                   fontSize: '10px',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  border: '1px solid rgba(0, 135, 103, 0.2)'
                 }}>
                   {group.items.length} item{group.items.length !== 1 ? 's' : ''}
                 </span>
-                <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: 'var(--border-color, #E2EBE6)', overflow: 'hidden' }}>
                   {(() => {
                     const up = group.items.filter(i => i.isUploaded).length;
                     const pct = group.items.length ? Math.round((up / group.items.length) * 100) : 0;
-                    return <div style={{ height: '100%', width: `${pct}%`, background: '#ec4899', borderRadius: '4px', transition: 'width 0.3s' }} />;
+                    return <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary, #008767)', borderRadius: '4px', transition: 'width 0.3s' }} />;
                   })()}
                 </div>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
@@ -636,8 +637,8 @@ export default function ArtworkHub({
                         key={`${project?.id || 'p'}-${mIdx}`}
                         style={{
                           background: 'var(--card-bg)',
-                          border: `1px solid ${isUploaded ? 'rgba(236, 72, 153, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
-                          borderTop: `3.5px solid ${isUploaded ? '#ec4899' : '#f59e0b'}`,
+                          border: `1px solid ${isUploaded ? 'rgba(0, 135, 103, 0.3)' : 'rgba(245, 158, 11, 0.35)'}`,
+                          borderTop: `3.5px solid ${isUploaded ? 'var(--primary, #008767)' : '#f59e0b'}`,
                           borderRadius: '8px',
                           overflow: 'hidden',
                           display: 'flex',
@@ -658,7 +659,7 @@ export default function ArtworkHub({
                         <div
                           style={{
                             height: '140px',
-                            background: '#041c20',
+                            background: 'var(--surface-secondary, #F4F8F6)',
                             borderBottom: '1px solid var(--border-color)',
                             display: 'flex',
                             alignItems: 'center',
@@ -744,16 +745,17 @@ export default function ArtworkHub({
                             position: 'absolute',
                             top: '8px',
                             left: '8px',
-                            background: 'rgba(6, 42, 48, 0.92)',
+                            background: 'rgba(255, 255, 255, 0.95)',
                             backdropFilter: 'blur(6px)',
                             border: '1px solid var(--border-color)',
                             padding: '3px 8px',
                             borderRadius: 'var(--radius-sm)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px'
                           }}>
-                            <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--teal)', fontFamily: 'var(--font-mono)' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--primary, #008767)', fontFamily: 'var(--font-mono)' }}>
                               {awCode}
                             </span>
                           </div>
@@ -828,7 +830,7 @@ export default function ArtworkHub({
                         <div style={{
                           padding: '10px 14px',
                           borderTop: '1px solid var(--border-color)',
-                          background: 'rgba(6, 42, 48, 0.45)',
+                          background: 'var(--surface-secondary, #F8FAF9)',
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
@@ -837,7 +839,7 @@ export default function ArtworkHub({
                           flexWrap: 'wrap'
                         }}>
                           {isProcessing ? (
-                            <div style={{ width: '100%', textAlign: 'center', fontSize: '10.5px', color: 'var(--teal)', fontWeight: 700, padding: '4px' }}>
+                            <div style={{ width: '100%', textAlign: 'center', fontSize: '10.5px', color: 'var(--primary, #008767)', fontWeight: 700, padding: '4px' }}>
                               ⏳ Processing...
                             </div>
                           ) : (
@@ -846,13 +848,13 @@ export default function ArtworkHub({
                                 <button
                                   onClick={() => onOpenSpecModal(project.id, mIdx)}
                                   style={{
-                                    background: 'rgba(0, 200, 215, 0.08)',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    color: 'var(--teal)',
+                                    background: 'var(--card-bg, #FFFFFF)',
+                                    border: '1px solid var(--border-color, #E2EBE6)',
+                                    color: 'var(--primary, #008767)',
                                     borderRadius: 'var(--radius-sm)',
                                     padding: '4px 8px',
                                     fontSize: '10.5px',
-                                    fontWeight: 500,
+                                    fontWeight: 600,
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -1056,7 +1058,7 @@ export default function ArtworkHub({
                               })()}
                             </td>
                             <td>
-                              <span style={{ fontFamily: 'var(--font-mono)', color: '#f472b6', fontWeight: 800, background: 'rgba(236, 72, 153, 0.1)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(236, 72, 153, 0.3)' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary, #008767)', fontWeight: 800, background: 'var(--brand-mint-light, #EAF2EE)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(0, 135, 103, 0.25)' }}>
                                 {awCode}
                               </span>
                             </td>
@@ -1316,7 +1318,7 @@ export default function ArtworkHub({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'rgba(6, 42, 48, 0.8)'
+              background: 'var(--surface-secondary, #F4F8F6)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>🎨</span>
@@ -1356,7 +1358,7 @@ export default function ArtworkHub({
                     width: '100%',
                     padding: '8px 12px',
                     borderRadius: '6px',
-                    background: '#062a30',
+                    background: 'var(--card-bg, #FFFFFF)',
                     border: '1px solid var(--border-color)',
                     color: 'var(--text-main)',
                     fontSize: '12px',
@@ -1364,7 +1366,7 @@ export default function ArtworkHub({
                   }}
                 >
                   {projects.map(p => (
-                    <option key={p.id} value={p.id} style={{ backgroundColor: '#062a30' }}>
+                    <option key={p.id} value={p.id}>
                       {p.projectName} {p.fgCode ? `(${p.fgCode})` : ''}
                     </option>
                   ))}
@@ -1383,7 +1385,7 @@ export default function ArtworkHub({
                     width: '100%',
                     padding: '8px 12px',
                     borderRadius: '6px',
-                    background: '#062a30',
+                    background: 'var(--card-bg, #FFFFFF)',
                     border: '1px solid var(--border-color)',
                     color: 'var(--text-main)',
                     fontSize: '12px',
@@ -1391,7 +1393,7 @@ export default function ArtworkHub({
                   }}
                 >
                   {selectedModalProject?.materials?.map((m, idx) => (
-                    <option key={idx} value={idx} style={{ backgroundColor: '#062a30' }}>
+                    <option key={idx} value={idx}>
                       {m.name} ({m.type}) — PM: {m.pmCode || 'PM-TBD'} [{hasArtwork(m) ? '✓ Has AW' : '⏳ Pending'}]
                     </option>
                   ))}
@@ -1403,8 +1405,8 @@ export default function ArtworkHub({
                 <div style={{
                   padding: '10px 14px',
                   borderRadius: '6px',
-                  background: 'rgba(236, 72, 153, 0.08)',
-                  border: '1px solid rgba(236, 72, 153, 0.25)',
+                  background: 'var(--brand-mint-light, #EAF2EE)',
+                  border: '1px solid rgba(0, 135, 103, 0.25)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -1412,13 +1414,13 @@ export default function ArtworkHub({
                 }}>
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>Input PM Code: </span>
-                    <strong style={{ color: 'var(--teal)', fontFamily: 'var(--font-mono)' }}>
+                    <strong style={{ color: 'var(--primary, #008767)', fontFamily: 'var(--font-mono)' }}>
                       {selectedModalMaterial.pmCode || 'PM-TBD'}
                     </strong>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>Auto-Derived AW Code: </span>
-                    <strong style={{ color: '#f472b6', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
+                    <strong style={{ color: 'var(--primary, #008767)', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
                       {selectedModalMaterial.artworkCode || getArtworkCode(selectedModalMaterial.pmCode || 'PM-TBD')}
                     </strong>
                   </div>
@@ -1441,11 +1443,11 @@ export default function ArtworkHub({
                   }}
                   onClick={() => modalFileInputRef.current?.click()}
                   style={{
-                    border: `2px dashed ${isDragOver ? '#ec4899' : 'rgba(236, 72, 153, 0.4)'}`,
+                    border: `2px dashed ${isDragOver ? 'var(--primary, #008767)' : 'var(--border-color)'}`,
                     borderRadius: '8px',
                     padding: '24px',
                     textAlign: 'center',
-                    background: isDragOver ? 'rgba(236, 72, 153, 0.1)' : 'rgba(6, 42, 48, 0.4)',
+                    background: isDragOver ? 'var(--brand-mint-light, #EAF2EE)' : 'var(--surface-secondary, #F4F8F6)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease'
                   }}

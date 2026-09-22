@@ -129,11 +129,15 @@ function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwC
     const vCode = v.itemCode || v.code || defaultItemCode || 'PM-TBD';
     const vAwCode = v.artworkCode || (v.code ? getArtworkCode(v.code) : '') || getArtworkCode(vCode);
     let files = Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0 ? v.artworkFiles : [];
-    if (files.length === 0 && (v.artworkUrl || v.artwork)) {
-      files = [{ name: `${vName} Artwork`, url: v.artworkUrl || v.artwork, type: 'image/png' }];
-    }
-    if (files.length === 0 && safeDefaultFiles.length > 0) {
-      files = safeDefaultFiles;
+    if (!v.hasRemovedArtwork) {
+      if (files.length === 0 && (v.artworkUrl || v.artwork)) {
+        files = [{ name: `${vName} Artwork`, url: v.artworkUrl || v.artwork, type: 'image/png' }];
+      }
+      if (files.length === 0 && safeDefaultFiles.length > 0) {
+        files = safeDefaultFiles;
+      }
+    } else {
+      files = [];
     }
     files = files.map(f => typeof f === 'string' ? { name: `${vName} Artwork`, url: f, type: 'image/png' } : f);
 
@@ -146,6 +150,7 @@ function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwC
       code: vCode,
       artworkCode: vAwCode,
       artworkFiles: files,
+      hasRemovedArtwork: !!v.hasRemovedArtwork,
       pantoneColors: getColorsArray(v.pantoneColors),
       dimensions: v.dimensions || '240mm W × 115mm H',
       barcode: v.barcode || '',
@@ -266,6 +271,8 @@ export default function SpecModal({
   const [showConverter, setShowConverter] = useState(false);
   const [promptAction, setPromptAction] = useState(null);
   const [promptText, setPromptText] = useState('');
+  const [previewArtworkModal, setPreviewArtworkModal] = useState(null);
+  const [isFullScreenPreview, setIsFullScreenPreview] = useState(false);
   
   // Active variant index in Artwork tab
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
@@ -275,7 +282,8 @@ export default function SpecModal({
   const artworkInputRef = useRef(null);
   const variantArtworkInputRef = useRef(null);
   const [activeVariantUploadIdx, setActiveVariantUploadIdx] = useState(null);
-  const [previewArtworkModal, setPreviewArtworkModal] = useState(null);
+  // Ref for synchronous access to the active upload index (state update is async)
+  const activeVariantUploadIdxRef = useRef(null);
   const isPrintingRef = useRef(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState('');
@@ -376,6 +384,8 @@ export default function SpecModal({
   };
 
   const triggerVariantArtworkUpload = (vIdx) => {
+    // Set ref synchronously so handleVariantArtworkUpload reads correct index
+    activeVariantUploadIdxRef.current = vIdx;
     setActiveVariantUploadIdx(vIdx);
     if (variantArtworkInputRef.current) {
       variantArtworkInputRef.current.value = '';
@@ -641,6 +651,31 @@ export default function SpecModal({
     });
   };
 
+  /* ── Blob URL Helper — converts data: URLs to blob: URLs for safe browser display ── */
+  const dataUrlToBlobUrl = (dataUrl) => {
+    try {
+      if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+      const [header, b64] = dataUrl.split(',');
+      const mime = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return URL.createObjectURL(new Blob([bytes], { type: mime }));
+    } catch {
+      return dataUrl;
+    }
+  };
+
+  /* ── Open file for viewing (handles data: → blob: conversion) ─────────── */
+  const openArtworkFile = (fileObj, title = null) => {
+    if (!fileObj?.url) return;
+    setPreviewArtworkModal({
+      ...fileObj,
+      title: title || fileObj.title || fileObj.name || 'Artwork Preview'
+    });
+    setIsFullScreenPreview(false);
+  };
+
   /* ── Artwork Upload Helper with Image Optimization ────────────────────── */
   const processUploadedFile = (file, customCode = null) => {
     return new Promise((resolve) => {
@@ -654,12 +689,23 @@ export default function SpecModal({
       const cleanOriginal = file.name.replace(/^AW-[^_]+_/, '').replace(/^PM-[^_]+_/, '');
       const standardizedName = file.name.startsWith(aw) ? file.name : `${aw}_${cleanOriginal}`;
 
-      if (!file.type || !file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (ev) => resolve({ name: standardizedName, url: ev.target.result, type: file.type || 'application/octet-stream' });
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-        return;
+      // ── Image-only restriction ─────────────────────────────────────────
+      const ALLOWED_IMAGE_TYPES = [
+        'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
+        'image/webp', 'image/svg+xml', 'image/bmp', 'image/tiff'
+      ];
+      const ALLOWED_EXTENSIONS = /\.(png|jpg|jpeg|gif|webp|svg|bmp|tiff|tif)$/i;
+
+      const isImage = ALLOWED_IMAGE_TYPES.includes(file.type) ||
+        (!file.type && ALLOWED_EXTENSIONS.test(file.name));
+
+      if (!isImage) {
+        const ext = file.name.split('.').pop()?.toUpperCase() || 'file';
+        if (showToast) showToast(
+          `⛔ ${ext} files are not allowed. Only image formats (PNG, JPG, GIF, WebP, SVG) are accepted.`,
+          'error'
+        );
+        return resolve(null);
       }
 
       const reader = new FileReader();
@@ -698,38 +744,55 @@ export default function SpecModal({
     if (!files.length) return;
     Promise.all(files.map(f => processUploadedFile(f))).then(results => {
       const valid = results.filter(Boolean);
-      setArtworkFiles(prev => [...prev, ...valid]);
-      // Also sync to first variant
+      if (!valid.length) return;
+      // REPLACE existing artwork (general upload always replaces)
+      setArtworkFiles(valid);
+      // Sync to all variants that don't have their own artwork
       setSpecSheet(prev => {
-        const copyVars = [...(prev.variants || [])];
-        if (copyVars[0]) {
-          copyVars[0].artworkFiles = [...(copyVars[0].artworkFiles || []), ...valid];
-        }
-        return { ...prev, artworkFiles: [...(prev.artworkFiles || []), ...valid], variants: copyVars };
+        const copyVars = [...(prev.variants || [])].map(v => ({
+          ...v,
+          artworkFiles: valid,
+          hasRemovedArtwork: false,
+          artworkUrl: valid[0]?.url || null
+        }));
+        return { ...prev, artworkFiles: valid, variants: copyVars };
       });
       if (showToast) showToast(`🖼️ ${valid.length} artwork file(s) uploaded`);
     });
     e.target.value = '';
   };
 
+
+
   const handleVariantArtworkUpload = (e) => {
     const files = Array.from(e.target.files || []);
-    if (!files.length || activeVariantUploadIdx === null) return;
-    const targetVar = (specSheet.variants || [])[activeVariantUploadIdx];
+    // Read from ref for synchronous accuracy (state may lag)
+    const uploadIdx = activeVariantUploadIdxRef.current ?? activeVariantUploadIdx;
+    if (!files.length || uploadIdx === null) return;
+    const targetVar = (specSheet.variants || [])[uploadIdx];
     Promise.all(files.map(f => processUploadedFile(f, targetVar?.itemCode))).then(results => {
       const valid = results.filter(Boolean);
+      if (!valid.length) return;
+      // REPLACE (not append): new upload overwrites existing artwork files for this variant
       setSpecSheet(prev => {
         const copyVars = [...(prev.variants || [])];
-        if (copyVars[activeVariantUploadIdx]) {
-          copyVars[activeVariantUploadIdx] = {
-            ...copyVars[activeVariantUploadIdx],
-            artworkFiles: [...(copyVars[activeVariantUploadIdx].artworkFiles || []), ...valid],
-            hasRemovedArtwork: false
+        if (copyVars[uploadIdx]) {
+          copyVars[uploadIdx] = {
+            ...copyVars[uploadIdx],
+            artworkFiles: valid, // ← replace, not append
+            hasRemovedArtwork: false,
+            artworkUrl: valid[0]?.url || null
           };
         }
-        return { ...prev, variants: copyVars };
+        // Sync specSheet.artworkFiles when replacing the primary variant (idx 0)
+        const nextArtworkFiles = uploadIdx === 0 ? valid : (prev.artworkFiles || []);
+        return { ...prev, artworkFiles: nextArtworkFiles, variants: copyVars };
       });
-      if (showToast) showToast(`🖼️ ${valid.length} artwork file(s) assigned to ${targetVar?.variantName || 'variant'}`);
+      // Also sync the top-level artworkFiles state for the primary variant
+      if (uploadIdx === 0) {
+        setArtworkFiles(valid);
+      }
+      if (showToast) showToast(`🖼️ Artwork replaced: ${valid[0]?.name || 'file'} assigned to ${targetVar?.variantName || 'variant'}`);
     });
     e.target.value = '';
   };
@@ -747,8 +810,14 @@ export default function SpecModal({
           artwork: null
         };
       }
-      return { ...prev, variants: copyVars };
+      // If removing from the primary variant, clear the top-level artworkFiles too
+      const nextArtworkFiles = vIdx === 0 ? [] : (prev.artworkFiles || []);
+      return { ...prev, artworkFiles: nextArtworkFiles, variants: copyVars };
     });
+    // Sync top-level artworkFiles state when clearing primary variant
+    if (vIdx === 0) {
+      setArtworkFiles([]);
+    }
   };
 
   /* ── Action Handlers ──────────────────────────────────────────────────── */
@@ -759,13 +828,13 @@ export default function SpecModal({
         ? artworkFiles
         : (Array.isArray(specSheet?.artworkFiles) && specSheet.artworkFiles.length > 0)
         ? specSheet.artworkFiles
-        : (Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0)
-        ? material.artworkFiles
         : [];
 
       const syncedVariants = Array.isArray(specSheet?.variants)
         ? specSheet.variants.map(v => ({
             ...v,
+            hasRemovedArtwork: !!v.hasRemovedArtwork,
+            artworkUrl: v.hasRemovedArtwork ? null : (v.artworkUrl || (v.artworkFiles?.[0]?.url || null)),
             artworkFiles: (Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0)
               ? v.artworkFiles
               : (v.hasRemovedArtwork ? [] : effectiveFiles)
@@ -774,6 +843,7 @@ export default function SpecModal({
 
       const sheetWithArtwork = {
         ...specSheet,
+        hasRemovedArtwork: !!specSheet?.hasRemovedArtwork,
         artworkFiles: effectiveFiles,
         variants: syncedVariants.length > 0 ? syncedVariants : specSheet?.variants
       };
@@ -809,13 +879,13 @@ export default function SpecModal({
         ? artworkFiles
         : (Array.isArray(specSheet?.artworkFiles) && specSheet.artworkFiles.length > 0)
         ? specSheet.artworkFiles
-        : (Array.isArray(material?.artworkFiles) && material.artworkFiles.length > 0)
-        ? material.artworkFiles
         : [];
 
       const syncedVariants = Array.isArray(specSheet?.variants)
         ? specSheet.variants.map(v => ({
             ...v,
+            hasRemovedArtwork: !!v.hasRemovedArtwork,
+            artworkUrl: v.hasRemovedArtwork ? null : (v.artworkUrl || (v.artworkFiles?.[0]?.url || null)),
             artworkFiles: (Array.isArray(v.artworkFiles) && v.artworkFiles.length > 0)
               ? v.artworkFiles
               : (v.hasRemovedArtwork ? [] : effectiveFiles)
@@ -824,6 +894,7 @@ export default function SpecModal({
 
       const sheetWithArtwork = {
         ...specSheet,
+        hasRemovedArtwork: !!specSheet?.hasRemovedArtwork,
         artworkFiles: effectiveFiles,
         variants: syncedVariants.length > 0 ? syncedVariants : specSheet?.variants
       };
@@ -1919,7 +1990,7 @@ export default function SpecModal({
                   </button>
                 )}
                 <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '8px' }}>
-                  Supported formats: PNG, JPG, PDF, AI, EPS, PSD (Max 25MB)
+                  Supported formats: PNG, JPG, GIF, WebP, SVG (Max 30MB)
                 </div>
               </div>
             ) : (
@@ -1944,7 +2015,7 @@ export default function SpecModal({
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm"
-                        onClick={() => window.open(awFiles[0].url, '_blank')}
+                        onClick={() => openArtworkFile(awFiles[0], `Artwork: Variant ${vNum} — ${vName} (${vAwCode})`)}
                         style={{ fontSize: '10.5px', padding: '2px 8px' }}
                       >
                         ↗ Open Full
@@ -1976,7 +2047,7 @@ export default function SpecModal({
                       <button
                         type="button"
                         className="btn btn-primary btn-sm no-print"
-                        onClick={() => window.open(awFiles[0].url, '_blank')}
+                        onClick={() => openArtworkFile(awFiles[0], `Artwork: Variant ${vNum} — ${vName} (${vAwCode})`)}
                         style={{ marginTop: '12px', fontSize: '11px' }}
                       >
                         ↗ Open Artwork Document
@@ -3257,14 +3328,14 @@ export default function SpecModal({
         <input
           ref={artworkInputRef}
           type="file"
-          accept="image/*,.pdf,.ai,.eps,.psd"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff"
           style={{ display: 'none' }}
           onChange={handleGeneralArtworkUpload}
         />
         <input
           ref={variantArtworkInputRef}
           type="file"
-          accept="image/*,.pdf,.ai,.eps,.psd"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/bmp,image/tiff"
           style={{ display: 'none' }}
           onChange={handleVariantArtworkUpload}
         />
@@ -3424,119 +3495,156 @@ export default function SpecModal({
         )}
 
         {/* Full Artwork Preview Modal / Lightbox */}
-        {previewArtworkModal && (
-          <div
-            className="modal-overlay open"
-            style={{
-              zIndex: 1350,
-              background: 'rgba(3, 14, 18, 0.88)',
-              backdropFilter: 'blur(8px)',
-              padding: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onClick={() => setPreviewArtworkModal(null)}
-          >
-            <div
-              className="modal"
-              style={{
-                maxWidth: '90vw',
-                width: '900px',
-                maxHeight: '90vh',
-                background: 'var(--card-bg, #062a30)',
-                border: '1px solid var(--border-color, rgba(0, 243, 255, 0.3))',
-                borderRadius: 'var(--radius-lg, 12px)',
-                padding: 0,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
-              }}
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div style={{
-                padding: '12px 18px',
-                background: 'var(--bg-sidebar, #041c20)',
-                borderBottom: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <Eye size={15} style={{ color: 'var(--teal, #00f3ff)', flexShrink: 0 }} />
-                  <span style={{ fontWeight: 700, fontSize: '12.5px', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {previewArtworkModal.title || previewArtworkModal.name || 'Artwork Preview'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                  {previewArtworkModal.url && (
-                    <a
-                      href={previewArtworkModal.url}
-                      download={previewArtworkModal.name || 'artwork'}
-                      className="btn btn-outline btn-sm"
-                      style={{ padding: '3px 8px', fontSize: '10.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                      title="Download original file"
-                    >
-                      <Download size={12} />
-                      <span>Download</span>
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setPreviewArtworkModal(null)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-muted, #94a3b8)',
-                      padding: '4px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
+        {previewArtworkModal && (() => {
+          const isPdf = previewArtworkModal.type?.includes('pdf') ||
+            previewArtworkModal.name?.toLowerCase().endsWith('.pdf') ||
+            previewArtworkModal.url?.startsWith('data:application/pdf') ||
+            previewArtworkModal.url?.toLowerCase().includes('.pdf');
+          // Convert data: URLs to blob: URLs so the browser can display them
+          const viewUrl = previewArtworkModal.url?.startsWith('data:')
+            ? dataUrlToBlobUrl(previewArtworkModal.url)
+            : previewArtworkModal.url;
 
-              {/* Body */}
-              <div style={{
-                flex: 1,
-                overflow: 'auto',
-                padding: '16px',
+          return (
+            <div
+              className="modal-overlay open"
+              style={{
+                zIndex: 1350,
+                background: 'rgba(3, 14, 18, 0.92)',
+                backdropFilter: 'blur(8px)',
+                padding: isFullScreenPreview ? 0 : '20px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                background: '#0d161a',
-                minHeight: '380px'
-              }}>
-                {previewArtworkModal.type?.includes('pdf') ||
-                 previewArtworkModal.name?.toLowerCase().endsWith('.pdf') ||
-                 previewArtworkModal.url?.startsWith('data:application/pdf') ||
-                 previewArtworkModal.url?.toLowerCase().includes('.pdf') ? (
-                  <iframe
-                    src={`${previewArtworkModal.url}#page=1&view=FitH&toolbar=1`}
-                    title={previewArtworkModal.name || 'PDF Preview'}
-                    style={{ width: '100%', height: '70vh', border: 'none' }}
-                  />
-                ) : (
-                  <img
-                    src={previewArtworkModal.url}
-                    alt={previewArtworkModal.name || 'Artwork'}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '75vh',
-                      objectFit: 'contain',
-                      borderRadius: '6px'
-                    }}
-                  />
-                )}
+                justifyContent: 'center'
+              }}
+              onClick={() => setPreviewArtworkModal(null)}
+            >
+              <div
+                className="modal"
+                style={{
+                  maxWidth: isFullScreenPreview ? '100vw' : '92vw',
+                  width: isFullScreenPreview ? '100vw' : '960px',
+                  maxHeight: isFullScreenPreview ? '100vh' : '92vh',
+                  height: isFullScreenPreview ? '100vh' : 'auto',
+                  background: 'var(--card-bg, #FFFFFF)',
+                  border: isFullScreenPreview ? 'none' : '1px solid var(--border-color, #e2e8f0)',
+                  borderRadius: isFullScreenPreview ? 0 : 'var(--radius-lg, 12px)',
+                  padding: 0,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div style={{
+                  padding: '12px 18px',
+                  background: 'var(--surface-secondary, #F4F8F6)',
+                  borderBottom: '1px solid var(--border-color, #e2e8f0)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <Eye size={15} style={{ color: 'var(--primary, #008767)', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: '12.5px', color: 'var(--text-main, #102B36)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {previewArtworkModal.title || previewArtworkModal.name || 'Artwork Preview'}
+                    </span>
+                    {isPdf ? (
+                      <span style={{ fontSize: '10px', background: '#fee2e2', color: '#dc2626', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, flexShrink: 0 }}>PDF</span>
+                    ) : (
+                      <span style={{ fontSize: '10px', background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, flexShrink: 0 }}>Image Proof</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setIsFullScreenPreview(!isFullScreenPreview)}
+                      style={{ padding: '3px 8px', fontSize: '10.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      title={isFullScreenPreview ? "Exit Fullscreen" : "Toggle Fullscreen"}
+                    >
+                      <span>{isFullScreenPreview ? '⤓ Window' : '⤢ Fullscreen'}</span>
+                    </button>
+                    {viewUrl && (
+                      <a
+                        href={viewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline btn-sm"
+                        style={{ padding: '3px 8px', fontSize: '10.5px', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                        title="Open in new browser tab"
+                      >
+                        <Eye size={11} />
+                        <span>New Tab</span>
+                      </a>
+                    )}
+                    {previewArtworkModal.url && (
+                      <a
+                        href={previewArtworkModal.url}
+                        download={previewArtworkModal.name || 'artwork'}
+                        className="btn btn-outline btn-sm"
+                        style={{ padding: '3px 8px', fontSize: '10.5px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="Download original file"
+                      >
+                        <Download size={12} />
+                        <span>Download</span>
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewArtworkModal(null)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted, #94a3b8)',
+                        padding: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div style={{
+                  flex: 1,
+                  overflow: 'auto',
+                  padding: isPdf ? 0 : '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isPdf ? '#525659' : '#090d16',
+                  minHeight: isFullScreenPreview ? 'calc(100vh - 55px)' : '420px'
+                }}>
+                  {isPdf ? (
+                    <iframe
+                      src={viewUrl}
+                      title={previewArtworkModal.name || 'PDF Preview'}
+                      style={{ width: '100%', height: isFullScreenPreview ? 'calc(100vh - 55px)' : '75vh', border: 'none', display: 'block' }}
+                    />
+                  ) : (
+                    <img
+                      src={viewUrl}
+                      alt={previewArtworkModal.name || 'Artwork'}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: isFullScreenPreview ? 'calc(100vh - 75px)' : '78vh',
+                        objectFit: 'contain',
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
     </div>

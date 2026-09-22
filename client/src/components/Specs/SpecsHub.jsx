@@ -69,26 +69,26 @@ function MaterialSpecCard({
   return (
     <div style={{
       background: 'var(--card-bg)',
-      border: isLibraryMaster ? '1.5px solid rgba(0, 243, 255, 0.4)' : `1px solid ${cfg.border}`,
+      border: isLibraryMaster ? '1.5px solid rgba(0, 135, 103, 0.4)' : `1px solid ${cfg.border}`,
       borderLeft: isLibraryMaster ? '4px solid var(--teal)' : `3.5px solid ${cfg.dot}`,
       borderRadius: '8px',
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      boxShadow: isLibraryMaster ? '0 4px 16px rgba(0, 243, 255, 0.08)' : 'var(--shadow-xs)',
+      boxShadow: 'var(--shadow-sm)',
     }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = isLibraryMaster ? '0 4px 16px rgba(0, 243, 255, 0.08)' : 'var(--shadow-xs)';
+        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
       }}
     >
       {/* Card Header */}
-      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-color)', background: isLibraryMaster ? 'rgba(0, 243, 255, 0.06)' : 'rgba(6, 42, 48, 0.45)' }}>
+      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-color)', background: isLibraryMaster ? 'rgba(0, 135, 103, 0.06)' : 'var(--card-bg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3, wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -96,9 +96,9 @@ function MaterialSpecCard({
               {isLibraryMaster && (
                 <span style={{
                   fontSize: '9px',
-                  background: 'rgba(0, 243, 255, 0.15)',
+                  background: 'rgba(0, 135, 103, 0.1)',
                   color: 'var(--teal)',
-                  border: '1px solid rgba(0, 243, 255, 0.3)',
+                  border: '1px solid rgba(0, 135, 103, 0.25)',
                   padding: '1px 5px',
                   borderRadius: '10px',
                   fontWeight: 800,
@@ -111,7 +111,7 @@ function MaterialSpecCard({
             <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '4px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
               <span>{material.type || 'Packaging Material'}</span>
               {material.pmCode && (
-                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)', background: 'rgba(0,243,255,0.08)', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(0,243,255,0.2)', fontSize: '9.5px' }} title="Specification PM Code">
+                <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--teal)', background: 'rgba(0, 135, 103, 0.08)', padding: '1px 6px', borderRadius: '4px', border: '1px solid rgba(0, 135, 103, 0.2)', fontSize: '9.5px' }} title="Specification PM Code">
                   {material.pmCode}
                 </span>
               )}
@@ -120,9 +120,9 @@ function MaterialSpecCard({
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onOpenArtworkModal && onOpenArtworkModal(project, material, mIdx); }}
                   style={{
-                    background: artworkReady ? 'rgba(236,72,153,0.15)' : 'rgba(245,158,11,0.15)',
-                    color: artworkReady ? '#f472b6' : '#fbbf24',
-                    border: `1px solid ${artworkReady ? 'rgba(236,72,153,0.4)' : 'rgba(245,158,11,0.4)'}`,
+                    background: artworkReady ? 'rgba(0, 135, 103, 0.1)' : 'rgba(217, 119, 6, 0.1)',
+                    color: artworkReady ? '#008767' : '#D97706',
+                    border: `1px solid ${artworkReady ? 'rgba(0, 135, 103, 0.25)' : 'rgba(217, 119, 6, 0.25)'}`,
                     padding: '1px 6px',
                     borderRadius: '4px',
                     fontFamily: 'var(--font-mono)',
@@ -157,21 +157,21 @@ function MaterialSpecCard({
 
       {/* Spec Doc Info (if spec exists) */}
       {specSheet?.docHeader && (
-        <div style={{ padding: '8px 14px', background: 'rgba(4, 28, 32, 0.4)', borderBottom: '1px solid var(--border-color)', fontSize: '9.5px', display: 'flex', flexWrap: 'wrap', gap: '12px', color: 'var(--text-muted)' }}>
-          <span><strong style={{ color: 'var(--text-dim)' }}>Doc:</strong> {specSheet.docHeader.docName || '—'}</span>
-          <span><strong style={{ color: 'var(--text-dim)' }}>Rev:</strong> {specSheet.docHeader.revision || '0.0'}</span>
-          <span><strong style={{ color: 'var(--text-dim)' }}>Date:</strong> {fmt(specSheet.docHeader.issueDate)}</span>
-          <span><strong style={{ color: 'var(--text-dim)' }}>Params:</strong> {Array.isArray(specSheet.parameters) ? specSheet.parameters.length : 0}</span>
+        <div style={{ padding: '8px 14px', background: 'var(--surface-secondary, #F4F8F6)', borderBottom: '1px solid var(--border-color)', fontSize: '9.5px', display: 'flex', flexWrap: 'wrap', gap: '12px', color: 'var(--text-secondary)' }}>
+          <span><strong style={{ color: 'var(--text-main)' }}>Doc:</strong> {specSheet.docHeader.docName || '—'}</span>
+          <span><strong style={{ color: 'var(--text-main)' }}>Rev:</strong> {specSheet.docHeader.revision || '0.0'}</span>
+          <span><strong style={{ color: 'var(--text-main)' }}>Date:</strong> {fmt(specSheet.docHeader.issueDate)}</span>
+          <span><strong style={{ color: 'var(--text-main)' }}>Params:</strong> {Array.isArray(specSheet.parameters) ? specSheet.parameters.length : 0}</span>
         </div>
       )}
 
       {/* Signature Status Row */}
-      <div style={{ padding: '8px 14px', display: 'flex', gap: '6px', borderBottom: '1px solid var(--border-color)', background: 'rgba(6, 42, 48, 0.25)' }}>
+      <div style={{ padding: '8px 14px', display: 'flex', gap: '6px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg, #FFFFFF)' }}>
         {sigRows.map(({ role, data, pendingLabel, pendingColor }) => (
           <div key={role} style={{
             flex: 1, textAlign: 'center', padding: '6px 4px',
-            background: data?.signed ? 'rgba(16,185,129,0.08)' : 'rgba(0,0,0,0.18)',
-            borderRadius: '5px', border: `1px solid ${data?.signed ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.06)'}`,
+            background: data?.signed ? 'rgba(0, 135, 103, 0.08)' : 'var(--surface-secondary, #F4F8F6)',
+            borderRadius: '5px', border: `1px solid ${data?.signed ? 'rgba(0, 135, 103, 0.25)' : 'var(--border-color, #E2EBE6)'}`,
             minWidth: 0
           }}>
             <div style={{ fontSize: '8px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
@@ -182,12 +182,12 @@ function MaterialSpecCard({
                 <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.2, wordBreak: 'break-word' }}>
                   {data.name || 'Signed'}
                 </div>
-                <div style={{ fontSize: '8px', color: '#10b981', fontWeight: 700, marginTop: '2px' }}>
+                <div style={{ fontSize: '8px', color: 'var(--teal)', fontWeight: 700, marginTop: '2px' }}>
                   ✓ {fmt(data.date)}
                 </div>
               </>
             ) : (
-              <div style={{ fontSize: '8.5px', color: pendingColor, fontStyle: 'italic', marginTop: '2px' }}>
+              <div style={{ fontSize: '8.5px', color: pendingColor === '#94a3b8' ? 'var(--text-faint)' : (pendingColor === '#f59e0b' ? 'var(--warning)' : pendingColor), fontStyle: 'italic', marginTop: '2px' }}>
                 {pendingLabel}
               </div>
             )}
@@ -211,9 +211,9 @@ function MaterialSpecCard({
               type="button"
               onClick={handleOpenPdf}
               style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: 'var(--surface-secondary, #F4F8F6)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-color)',
                 borderRadius: '6px',
                 padding: '5px 8px',
                 fontSize: '10px',
@@ -234,7 +234,7 @@ function MaterialSpecCard({
             <button
               onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, material, mIdx)}
               style={{
-                background: 'var(--card-bg-subtle)',
+                background: 'var(--surface-secondary, #F4F8F6)',
                 color: artworkReady ? 'var(--teal)' : 'var(--warning)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-sm)',
@@ -266,18 +266,18 @@ function MaterialSpecCard({
               background: statusKey === 'NO_SPEC'
                 ? 'var(--teal)'
                 : statusKey === 'APPROVED'
-                ? 'rgba(56, 201, 138, 0.1)'
-                : 'rgba(0, 200, 215, 0.08)',
+                ? 'rgba(0, 135, 103, 0.08)'
+                : 'var(--surface-secondary, #F4F8F6)',
               color: statusKey === 'NO_SPEC'
-                ? '#071A1D'
+                ? '#ffffff'
                 : statusKey === 'APPROVED'
-                ? 'var(--success)'
-                : 'var(--teal)',
+                ? 'var(--teal)'
+                : 'var(--text-main)',
               border: `1px solid ${statusKey === 'NO_SPEC'
                 ? 'var(--teal)'
                 : statusKey === 'APPROVED'
-                ? 'rgba(56, 201, 138, 0.25)'
-                : 'rgba(255, 255, 255, 0.08)'}`,
+                ? 'rgba(0, 135, 103, 0.25)'
+                : 'var(--border-color)'}`,
               borderRadius: 'var(--radius-sm)',
               padding: '5px 12px',
               fontSize: '10.5px',
@@ -289,7 +289,7 @@ function MaterialSpecCard({
               alignItems: 'center',
               gap: '4px'
             }}
-            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.05)'}
             onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1.0)'}
           >
             {statusKey === 'NO_SPEC' ? (
@@ -531,9 +531,9 @@ export default function SpecsHub({
             📋 Packaging Specification Library
           </span>
           <span style={{
-            background: 'rgba(0, 243, 255, 0.12)',
+            background: 'rgba(0, 135, 103, 0.1)',
             color: 'var(--teal)',
-            border: '1px solid rgba(0, 243, 255, 0.3)',
+            border: '1px solid rgba(0, 135, 103, 0.25)',
             padding: '2px 9px',
             borderRadius: '20px',
             fontSize: '10.5px',
@@ -559,7 +559,7 @@ export default function SpecsHub({
               fontSize: '11.5px',
               fontWeight: 800,
               padding: '6px 14px',
-              boxShadow: '0 2px 12px rgba(0, 243, 255, 0.35)',
+              boxShadow: '0 2px 10px rgba(0, 135, 103, 0.25)',
               borderRadius: '6px'
             }}
           >
@@ -579,7 +579,6 @@ export default function SpecsHub({
             className="filter-sel"
             value={sourceFilter}
             onChange={e => setSourceFilter(e.target.value)}
-            style={{ backgroundColor: '#062a30' }}
           >
             <option value="all">All Sources</option>
             <option value="projects">Project Materials</option>
@@ -593,7 +592,7 @@ export default function SpecsHub({
           >
             <option value="">All Statuses</option>
             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-              <option key={k} value={k} style={{ backgroundColor: '#062a30', color: '#ffffff' }}>
+              <option key={k} value={k}>
                 {v.label}
               </option>
             ))}
@@ -607,9 +606,9 @@ export default function SpecsHub({
               onChange={e => setGroupBy(e.target.value)}
               style={{ margin: 0 }}
             >
-              <option value="project" style={{ backgroundColor: '#062a30' }}>Group by Project</option>
-              <option value="status" style={{ backgroundColor: '#062a30' }}>Group by Status</option>
-              <option value="type" style={{ backgroundColor: '#062a30' }}>Group by Material Type</option>
+              <option value="project">Group by Project</option>
+              <option value="status">Group by Status</option>
+              <option value="type">Group by Material Type</option>
             </select>
 
             <div style={{
@@ -633,7 +632,7 @@ export default function SpecsHub({
                     cursor: 'pointer',
                     border: 'none',
                     background: viewMode === mode ? 'var(--teal)' : 'transparent',
-                    color: viewMode === mode ? '#041c20' : 'var(--text-dim)',
+                    color: viewMode === mode ? '#ffffff' : 'var(--text-dim)',
                     transition: 'all 0.15s',
                     whiteSpace: 'nowrap'
                   }}
@@ -653,23 +652,25 @@ export default function SpecsHub({
         gap: '8px',
         flexWrap: 'wrap',
         alignItems: 'center',
-        background: 'rgba(6, 42, 48, 0.5)',
+        background: 'var(--surface-secondary, #F4F8F6)',
         borderBottom: '1px solid var(--border-color)'
       }}>
         {/* Source Switcher Pills */}
-        <div style={{ display: 'flex', gap: '4px', marginRight: '6px', borderRight: '1px solid var(--border-color)', paddingRight: '10px' }}>
+        <div style={{ display: 'flex', gap: '6px', marginRight: '6px', borderRight: '1px solid var(--border-color)', paddingRight: '10px' }}>
           <button
             type="button"
             onClick={() => setSourceFilter('all')}
             style={{
-              background: sourceFilter === 'all' ? 'var(--teal)' : 'rgba(0,0,0,0.25)',
-              color: sourceFilter === 'all' ? '#041c20' : 'var(--text-dim)',
-              border: `1px solid ${sourceFilter === 'all' ? 'var(--teal)' : 'rgba(255,255,255,0.08)'}`,
+              background: sourceFilter === 'all' ? 'var(--teal)' : 'var(--card-bg, #FFFFFF)',
+              color: sourceFilter === 'all' ? '#ffffff' : 'var(--text-body, #243E48)',
+              border: `1px solid ${sourceFilter === 'all' ? 'var(--teal)' : 'var(--border-color, #E2EBE6)'}`,
               borderRadius: '6px',
-              padding: '4px 10px',
+              padding: '5px 12px',
               fontSize: '11px',
               fontWeight: 700,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: sourceFilter === 'all' ? '0 1px 3px rgba(0,135,103,0.3)' : 'var(--shadow-xs)',
+              transition: 'all 0.15s'
             }}
           >
             All Specs ({allMaterials.length})
@@ -678,22 +679,24 @@ export default function SpecsHub({
             type="button"
             onClick={() => setSourceFilter('library')}
             style={{
-              background: sourceFilter === 'library' ? 'var(--teal)' : 'rgba(0, 243, 255, 0.08)',
-              color: sourceFilter === 'library' ? '#041c20' : 'var(--teal)',
-              border: `1px solid ${sourceFilter === 'library' ? 'var(--teal)' : 'rgba(0, 243, 255, 0.25)'}`,
+              background: sourceFilter === 'library' ? 'var(--teal)' : 'var(--card-bg, #FFFFFF)',
+              color: sourceFilter === 'library' ? '#ffffff' : 'var(--text-body, #243E48)',
+              border: `1px solid ${sourceFilter === 'library' ? 'var(--teal)' : 'var(--border-color, #E2EBE6)'}`,
               borderRadius: '6px',
-              padding: '4px 10px',
+              padding: '5px 12px',
               fontSize: '11px',
               fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              boxShadow: sourceFilter === 'library' ? '0 1px 3px rgba(0,135,103,0.3)' : 'var(--shadow-xs)',
+              transition: 'all 0.15s'
             }}
           >
             <span>📚 Master Spec Library</span>
             <span style={{
-              background: sourceFilter === 'library' ? 'rgba(0,0,0,0.3)' : 'rgba(0,243,255,0.2)',
+              background: sourceFilter === 'library' ? 'rgba(255,255,255,0.25)' : 'rgba(0, 135, 103, 0.1)',
               color: sourceFilter === 'library' ? '#ffffff' : 'var(--teal)',
               padding: '1px 6px',
               borderRadius: '10px',
@@ -707,14 +710,16 @@ export default function SpecsHub({
             type="button"
             onClick={() => setSourceFilter('projects')}
             style={{
-              background: sourceFilter === 'projects' ? 'var(--teal)' : 'rgba(0,0,0,0.25)',
-              color: sourceFilter === 'projects' ? '#041c20' : 'var(--text-dim)',
-              border: `1px solid ${sourceFilter === 'projects' ? 'var(--teal)' : 'rgba(255,255,255,0.08)'}`,
+              background: sourceFilter === 'projects' ? 'var(--teal)' : 'var(--card-bg, #FFFFFF)',
+              color: sourceFilter === 'projects' ? '#ffffff' : 'var(--text-body, #243E48)',
+              border: `1px solid ${sourceFilter === 'projects' ? 'var(--teal)' : 'var(--border-color, #E2EBE6)'}`,
               borderRadius: '6px',
-              padding: '4px 10px',
+              padding: '5px 12px',
               fontSize: '11px',
               fontWeight: 700,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: sourceFilter === 'projects' ? '0 1px 3px rgba(0,135,103,0.3)' : 'var(--shadow-xs)',
+              transition: 'all 0.15s'
             }}
           >
             📦 Project Materials ({allMaterials.filter(m => !m.isLibraryMaster).length})
@@ -725,40 +730,61 @@ export default function SpecsHub({
           type="button"
           onClick={() => setStatusFilter('')}
           style={{
-            background: !statusFilter ? 'rgba(0, 243, 255, 0.15)' : 'rgba(0,0,0,0.2)',
-            border: `1px solid ${!statusFilter ? 'var(--teal)' : 'rgba(255,255,255,0.08)'}`,
-            color: !statusFilter ? 'var(--teal)' : 'var(--text-dim)',
+            background: !statusFilter ? 'var(--teal)' : 'var(--card-bg, #FFFFFF)',
+            border: `1px solid ${!statusFilter ? 'var(--teal)' : 'var(--border-color, #E2EBE6)'}`,
+            color: !statusFilter ? '#ffffff' : 'var(--text-body, #243E48)',
             borderRadius: '20px',
             padding: '4px 12px',
             fontSize: '10.5px',
             fontWeight: 700,
             cursor: 'pointer',
+            boxShadow: !statusFilter ? '0 1px 3px rgba(0,135,103,0.3)' : 'var(--shadow-xs)',
             transition: 'all 0.15s'
           }}
         >
           All Statuses · {counts.total}
         </button>
 
-        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => counts[key] > 0 && (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setStatusFilter(statusFilter === key ? '' : key)}
-            style={{
-              background: statusFilter === key ? cfg.bg : 'rgba(0,0,0,0.2)',
-              border: `1px solid ${statusFilter === key ? cfg.border : 'rgba(255,255,255,0.08)'}`,
-              color: cfg.color,
-              borderRadius: '20px',
-              padding: '4px 12px',
-              fontSize: '10.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s'
-            }}
-          >
-            {cfg.icon} {cfg.label} · {counts[key]}
-          </button>
-        ))}
+        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+          if (counts[key] <= 0) return null;
+          const isSelected = statusFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(isSelected ? '' : key)}
+              style={{
+                background: isSelected ? cfg.color : 'var(--card-bg, #FFFFFF)',
+                border: `1px solid ${isSelected ? cfg.color : 'var(--border-color, #E2EBE6)'}`,
+                color: isSelected ? '#ffffff' : cfg.color,
+                borderRadius: '20px',
+                padding: '4px 12px',
+                fontSize: '10.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: isSelected ? `0 2px 6px ${cfg.bg}` : 'var(--shadow-xs)',
+                transition: 'all 0.15s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <span>{cfg.icon}</span>
+              <span>{cfg.label}</span>
+              <span style={{
+                background: isSelected ? 'rgba(255,255,255,0.25)' : cfg.bg,
+                color: isSelected ? '#ffffff' : cfg.color,
+                padding: '1px 6px',
+                borderRadius: '10px',
+                fontSize: '9.5px',
+                fontWeight: 800,
+                marginLeft: '2px'
+              }}>
+                {counts[key]}
+              </span>
+            </button>
+          );
+        })}
 
         <button
           type="button"
@@ -766,16 +792,17 @@ export default function SpecsHub({
           title="Refresh Spec Library"
           style={{
             marginLeft: 'auto',
-            background: 'transparent',
-            border: '1px solid var(--border-color)',
+            background: 'var(--card-bg, #FFFFFF)',
+            border: '1px solid var(--border-color, #E2EBE6)',
             borderRadius: '6px',
             padding: '4px 10px',
-            color: 'var(--text-dim)',
+            color: 'var(--text-body, #243E48)',
             fontSize: '11px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '5px'
+            gap: '5px',
+            boxShadow: 'var(--shadow-xs)'
           }}
         >
           <RefreshCw size={12} style={{ animation: isLoadingLibrary ? 'spin 1s linear infinite' : 'none' }} />
@@ -825,8 +852,9 @@ export default function SpecsHub({
                   {group.label}
                 </span>
                 <span style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  color: 'var(--text-dim)',
+                  background: 'var(--surface-secondary, #F4F8F6)',
+                  color: 'var(--text-secondary, #526B74)',
+                  border: '1px solid var(--border-color, #E2EBE6)',
                   padding: '1px 8px',
                   borderRadius: '12px',
                   fontSize: '10px',
@@ -834,11 +862,11 @@ export default function SpecsHub({
                 }}>
                   {group.items.length} spec{group.items.length !== 1 ? 's' : ''}
                 </span>
-                <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: '4px', borderRadius: '4px', background: 'var(--border-color, #E2EBE6)', overflow: 'hidden' }}>
                   {(() => {
                     const approved = group.items.filter(m => m.statusKey === 'APPROVED').length;
                     const pct = group.items.length ? Math.round((approved / group.items.length) * 100) : 0;
-                    return <div style={{ height: '100%', width: `${pct}%`, background: '#10b981', borderRadius: '4px', transition: 'width 0.3s' }} />;
+                    return <div style={{ height: '100%', width: `${pct}%`, background: 'var(--teal, #008767)', borderRadius: '4px', transition: 'width 0.3s' }} />;
                   })()}
                 </div>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
@@ -895,7 +923,7 @@ export default function SpecsHub({
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span>{material.name || 'Unnamed Material'}</span>
                                 {isLibraryMaster && (
-                                  <span style={{ fontSize: '8.5px', color: 'var(--teal)', background: 'rgba(0,243,255,0.1)', padding: '1px 5px', borderRadius: '4px' }}>
+                                  <span style={{ fontSize: '8.5px', color: 'var(--teal)', background: 'rgba(0, 135, 103, 0.1)', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(0, 135, 103, 0.25)' }}>
                                     Master
                                   </span>
                                 )}
@@ -909,9 +937,9 @@ export default function SpecsHub({
                                   type="button"
                                   onClick={() => onOpenArtworkModal && onOpenArtworkModal(project, material, mIdx)}
                                   style={{
-                                    background: artworkReady ? 'rgba(236,72,153,0.15)' : 'rgba(245,158,11,0.15)',
-                                    color: artworkReady ? '#f472b6' : '#fbbf24',
-                                    border: `1px solid ${artworkReady ? 'rgba(236,72,153,0.4)' : 'rgba(245,158,11,0.4)'}`,
+                                    background: artworkReady ? 'rgba(0, 135, 103, 0.1)' : 'rgba(217, 119, 6, 0.1)',
+                                    color: artworkReady ? '#008767' : '#D97706',
+                                    border: `1px solid ${artworkReady ? 'rgba(0, 135, 103, 0.25)' : 'rgba(217, 119, 6, 0.25)'}`,
                                     borderRadius: '4px',
                                     padding: '2px 6px',
                                     fontFamily: 'var(--font-mono)',
@@ -934,12 +962,12 @@ export default function SpecsHub({
                             <td><StatusBadge statusKey={sk} /></td>
                             <td style={{ fontSize: '10px' }}>
                               {gov.preparedBy?.signed
-                                ? <span style={{ color: '#10b981', fontWeight: 700 }}>✓ {gov.preparedBy.name || 'Executive'}</span>
+                                ? <span style={{ color: 'var(--teal)', fontWeight: 700 }}>✓ {gov.preparedBy.name || 'Executive'}</span>
                                 : <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}>Pending</span>}
                             </td>
                             <td style={{ fontSize: '10px' }}>
                               {gov.approvedBy?.signed
-                                ? <span style={{ color: '#10b981', fontWeight: 800 }}>✓ {gov.approvedBy.name || 'Head'}</span>
+                                ? <span style={{ color: 'var(--teal)', fontWeight: 800 }}>✓ {gov.approvedBy.name || 'Head'}</span>
                                 : <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}>Pending</span>}
                             </td>
                             <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
@@ -951,9 +979,9 @@ export default function SpecsHub({
                                       if (w) w.document.write(`<iframe src="${material.sourcePdfData?.includes('#') ? material.sourcePdfData : `${material.sourcePdfData}#page=1&view=FitH&toolbar=1`}" style="width:100%;height:100vh;border:none;"></iframe>`);
                                     }}
                                     style={{
-                                      background: 'rgba(255,255,255,0.08)',
-                                      color: '#ffffff',
-                                      border: '1px solid rgba(255,255,255,0.2)',
+                                      background: 'var(--surface-secondary, #F4F8F6)',
+                                      color: 'var(--text-main)',
+                                      border: '1px solid var(--border-color)',
                                       borderRadius: '4px',
                                       padding: '3px 6px',
                                       fontSize: '9.5px',
@@ -973,9 +1001,9 @@ export default function SpecsHub({
                                     }
                                   }}
                                   style={{
-                                    background: sk === 'NO_SPEC' ? 'var(--teal)' : 'rgba(0,243,255,0.12)',
-                                    color: sk === 'NO_SPEC' ? '#041c20' : 'var(--teal)',
-                                    border: `1px solid ${sk === 'NO_SPEC' ? 'var(--teal)' : 'rgba(0,243,255,0.3)'}`,
+                                    background: sk === 'NO_SPEC' ? 'var(--teal)' : 'rgba(0, 135, 103, 0.08)',
+                                    color: sk === 'NO_SPEC' ? '#ffffff' : 'var(--teal)',
+                                    border: `1px solid ${sk === 'NO_SPEC' ? 'var(--teal)' : 'rgba(0, 135, 103, 0.25)'}`,
                                     borderRadius: '4px',
                                     padding: '3px 7px',
                                     fontSize: '9.5px',

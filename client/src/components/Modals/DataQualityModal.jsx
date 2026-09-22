@@ -160,8 +160,8 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                 gap: '12px',
                 padding: '10px 14px',
                 borderRadius: '10px',
-                background: 'rgba(7, 26, 29, 0.8)',
-                border: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))'
+                background: 'var(--surface-secondary, #F4F8F6)',
+                border: '1px solid var(--border-color)'
               }}
             >
               <div style={{ fontSize: '32px', fontWeight: '800', color: 'var(--teal, #00d4c8)', fontFamily: 'var(--font-mono, monospace)', lineHeight: 1 }}>
@@ -194,8 +194,8 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                   borderRadius: '10px',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  background: filterSeverity === 'Critical' ? 'rgba(240, 93, 108, 0.18)' : 'rgba(7, 26, 29, 0.5)',
-                  border: filterSeverity === 'Critical' ? '1px solid var(--danger, #f05d6c)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: filterSeverity === 'Critical' ? 'rgba(240, 93, 108, 0.12)' : 'var(--card-bg, #ffffff)',
+                  border: filterSeverity === 'Critical' ? '1px solid var(--danger, #f05d6c)' : '1px solid var(--border-color)',
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -203,7 +203,7 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                   <span style={{ fontSize: '9.5px', textTransform: 'uppercase', fontWeight: '700', color: 'var(--danger, #f05d6c)' }}>Critical</span>
                   <AlertCircle size={13} color="var(--danger, #f05d6c)" />
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '3px' }}>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)', marginTop: '3px' }}>
                   {audit.breakdown?.critical || 0}
                 </div>
               </button>
@@ -216,8 +216,8 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                   borderRadius: '10px',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  background: filterSeverity === 'Warning' ? 'rgba(242, 184, 75, 0.18)' : 'rgba(7, 26, 29, 0.5)',
-                  border: filterSeverity === 'Warning' ? '1px solid var(--warning, #f2b84b)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: filterSeverity === 'Warning' ? 'rgba(242, 184, 75, 0.12)' : 'var(--card-bg, #ffffff)',
+                  border: filterSeverity === 'Warning' ? '1px solid var(--warning, #f2b84b)' : '1px solid var(--border-color)',
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -225,7 +225,7 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                   <span style={{ fontSize: '9.5px', textTransform: 'uppercase', fontWeight: '700', color: 'var(--warning, #f2b84b)' }}>Warnings</span>
                   <AlertTriangle size={13} color="var(--warning, #f2b84b)" />
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '3px' }}>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)', marginTop: '3px' }}>
                   {audit.breakdown?.warning || 0}
                 </div>
               </button>
@@ -238,16 +238,16 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                   borderRadius: '10px',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  background: filterSeverity === 'Notice' ? 'rgba(0, 200, 215, 0.18)' : 'rgba(7, 26, 29, 0.5)',
-                  border: filterSeverity === 'Notice' ? '1px solid var(--teal, #00d4c8)' : '1px solid rgba(255, 255, 255, 0.08)',
+                  background: filterSeverity === 'Notice' ? 'var(--brand-mint-light, #EAF2EE)' : 'var(--card-bg, #ffffff)',
+                  border: filterSeverity === 'Notice' ? '1px solid var(--primary, #008767)' : '1px solid var(--border-color)',
                   transition: 'all 0.15s ease'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '9.5px', textTransform: 'uppercase', fontWeight: '700', color: 'var(--teal, #00d4c8)' }}>Notices</span>
-                  <Info size={13} color="var(--teal, #00d4c8)" />
+                  <span style={{ fontSize: '9.5px', textTransform: 'uppercase', fontWeight: '700', color: 'var(--primary, #008767)' }}>Notices</span>
+                  <Info size={13} color="var(--primary, #008767)" />
                 </div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginTop: '3px' }}>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)', marginTop: '3px' }}>
                   {audit.breakdown?.notice || 0}
                 </div>
               </button>
@@ -259,8 +259,8 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
         <div
           style={{
             padding: '8px 22px',
-            borderBottom: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
-            background: 'rgba(7, 26, 29, 0.6)',
+            borderBottom: '1px solid var(--border-color)',
+            background: 'var(--surface-secondary, #F4F8F6)',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -325,8 +325,8 @@ export default function DataQualityModal({ isOpen, onClose, onNavigateProject })
                   style={{
                     padding: '12px 16px',
                     borderRadius: '10px',
-                    background: 'rgba(7, 26, 29, 0.5)',
-                    border: '1px solid var(--border-color, rgba(255, 255, 255, 0.08))',
+                    background: 'var(--card-bg, #ffffff)',
+                    border: '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'flex-start',
                     justifyContent: 'space-between',

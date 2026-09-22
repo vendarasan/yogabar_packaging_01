@@ -447,8 +447,8 @@ export default function ArtworkViewerModal({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      background: isActive ? 'var(--teal)' : 'var(--bg-app)',
-                      border: isActive ? '1px solid var(--teal)' : '1px solid var(--border-color)',
+                      background: isActive ? 'var(--primary, #008767)' : 'var(--card-bg, #FFFFFF)',
+                      border: isActive ? '1px solid var(--primary, #008767)' : '1px solid var(--border-color, #E2EBE6)',
                       borderRadius: 'var(--radius-sm)',
                       overflow: 'hidden',
                       flexShrink: 0
@@ -463,7 +463,7 @@ export default function ArtworkViewerModal({
                         fontWeight: 600,
                         cursor: 'pointer',
                         background: 'transparent',
-                        color: isActive ? '#071A1D' : 'var(--text-secondary)',
+                        color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
                         border: 'none',
                         maxWidth: '140px',
                         overflow: 'hidden',
@@ -488,7 +488,7 @@ export default function ArtworkViewerModal({
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: isActive ? 'rgba(7, 26, 29, 0.7)' : 'var(--danger)',
+                        color: isActive ? 'rgba(255, 255, 255, 0.85)' : 'var(--danger)',
                         cursor: 'pointer',
                         padding: '2px 5px',
                         fontSize: '11px',
@@ -654,7 +654,7 @@ export default function ArtworkViewerModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(4, 18, 24, 0.95)',
+            background: 'var(--surface-secondary, #F4F8F6)',
             position: 'relative'
           }}
         >
@@ -717,7 +717,7 @@ export default function ArtworkViewerModal({
               <div
                 style={{
                   padding: '8px 16px',
-                  background: 'var(--bg-sidebar)',
+                  background: 'var(--surface-secondary, #F4F8F6)',
                   borderBottom: '1px solid var(--border-color)',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -774,7 +774,7 @@ export default function ArtworkViewerModal({
               </div>
 
               {activeFile.url ? (
-                <div style={{ flex: 1, width: '100%', minHeight: '520px', background: '#1c2427', position: 'relative' }}>
+                <div style={{ flex: 1, width: '100%', minHeight: '520px', background: 'var(--surface-secondary, #F4F8F6)', position: 'relative' }}>
                   <iframe
                     src={(() => {
                       const u = pdfBlobUrl || activeFile.url;
@@ -788,7 +788,7 @@ export default function ArtworkViewerModal({
                       minHeight: '540px',
                       border: 'none',
                       display: 'block',
-                      background: '#1c2427'
+                      background: 'var(--surface-secondary, #F4F8F6)'
                     }}
                   />
                 </div>
@@ -799,13 +799,14 @@ export default function ArtworkViewerModal({
                     padding: '50px 30px',
                     maxWidth: '460px',
                     margin: 'auto',
-                    background: 'var(--card-bg)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-lg)'
+                    background: 'var(--card-bg, #FFFFFF)',
+                    border: '1px solid var(--border-color, #E2EBE6)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)'
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                    <FileText size={36} style={{ color: 'var(--teal)' }} />
+                    <FileText size={36} style={{ color: 'var(--primary, #008767)' }} />
                   </div>
                   <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
                     PDF Preview Data Not Available
@@ -862,13 +863,13 @@ export default function ArtworkViewerModal({
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
-                <FileText size={40} style={{ color: 'var(--teal)' }} />
+                <FileText size={40} style={{ color: 'var(--primary, #008767)' }} />
               </div>
               <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
                 {activeFile?.name || 'Artwork Document'}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '18px' }}>
-                Format: {activeFile?.type || 'Vector/Document'} &bull; Linked Code: <strong style={{ color: 'var(--teal)' }}>{awCode}</strong>
+                Format: {activeFile?.type || 'Vector/Document'} &bull; Linked Code: <strong style={{ color: 'var(--primary, #008767)' }}>{awCode}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
                 {activeFile?.url && (
@@ -917,12 +918,12 @@ export default function ArtworkViewerModal({
         >
           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             {stage === 'VPDF' ? (
-              <span style={{ color: 'var(--teal)', fontWeight: 600 }}>
+              <span style={{ color: 'var(--primary, #008767)', fontWeight: 600 }}>
                 Project is at VPDF stage — Approved Artwork {awCode} is active for Vendor PDF proofing.
               </span>
             ) : (
               <span>
-                Artwork code <strong style={{ color: 'var(--teal)' }}>{awCode}</strong> is derived from PM Code <strong style={{ color: 'var(--teal)' }}>{pmCode}</strong>.
+                Artwork code <strong style={{ color: 'var(--primary, #008767)' }}>{awCode}</strong> is derived from PM Code <strong style={{ color: 'var(--forest-green, #102B36)' }}>{pmCode}</strong>.
               </span>
             )}
           </div>
@@ -933,7 +934,7 @@ export default function ArtworkViewerModal({
                 className="btn btn-secondary btn-sm"
                 onClick={() => replaceFileInputRef.current?.click()}
                 disabled={isUploading}
-                style={{ color: 'var(--teal)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                style={{ color: 'var(--primary, #008767)', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
                 <RefreshCw size={11} /> Update Artwork
               </button>

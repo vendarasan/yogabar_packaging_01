@@ -126,51 +126,51 @@ export function getArtworkFiles(material) {
 export const STATUS_CONFIG = {
   APPROVED: {
     label: 'Approved',
-    color: '#38C98A',
-    bg: 'rgba(56, 201, 138, 0.12)',
-    border: 'rgba(56, 201, 138, 0.3)',
+    color: '#008767',
+    bg: 'rgba(0, 135, 103, 0.1)',
+    border: 'rgba(0, 135, 103, 0.25)',
     icon: '✓',
-    dot: '#38C98A'
+    dot: '#008767'
   },
   CHECKED_PENDING_APPROVAL: {
     label: 'Checked — Awaiting Approval',
-    color: '#4F8CFF',
-    bg: 'rgba(79, 140, 255, 0.12)',
-    border: 'rgba(79, 140, 255, 0.3)',
+    color: '#0284C7',
+    bg: 'rgba(2, 132, 199, 0.1)',
+    border: 'rgba(2, 132, 199, 0.25)',
     icon: '✓',
-    dot: '#4F8CFF'
+    dot: '#0284C7'
   },
   PENDING_CHECK: {
     label: 'Submitted — Awaiting PM Check',
-    color: '#F2B84B',
-    bg: 'rgba(242, 184, 75, 0.12)',
-    border: 'rgba(242, 184, 75, 0.3)',
+    color: '#D97706',
+    bg: 'rgba(217, 119, 6, 0.1)',
+    border: 'rgba(217, 119, 6, 0.25)',
     icon: '⏳',
-    dot: '#F2B84B'
+    dot: '#D97706'
   },
   REVISION_REQUESTED: {
     label: 'Revision Requested',
-    color: '#F05D6C',
-    bg: 'rgba(240, 93, 108, 0.12)',
-    border: 'rgba(240, 93, 108, 0.3)',
+    color: '#DC2626',
+    bg: 'rgba(220, 38, 38, 0.1)',
+    border: 'rgba(220, 38, 38, 0.25)',
     icon: '!',
-    dot: '#F05D6C'
+    dot: '#DC2626'
   },
   DRAFT: {
     label: 'Draft',
-    color: '#8FA8AA',
-    bg: 'rgba(143, 168, 170, 0.1)',
-    border: 'rgba(143, 168, 170, 0.25)',
+    color: '#475569',
+    bg: 'rgba(71, 85, 105, 0.08)',
+    border: 'rgba(71, 85, 105, 0.2)',
     icon: '•',
-    dot: '#8FA8AA'
+    dot: '#64748B'
   },
   NO_SPEC: {
     label: 'No Spec Sheet Yet',
-    color: '#607C80',
-    bg: 'rgba(96, 124, 128, 0.08)',
-    border: 'rgba(96, 124, 128, 0.2)',
+    color: '#64748B',
+    bg: 'rgba(100, 116, 139, 0.08)',
+    border: 'rgba(100, 116, 139, 0.2)',
     icon: '—',
-    dot: '#607C80'
+    dot: '#94A3B8'
   }
 };
 

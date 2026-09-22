@@ -157,7 +157,7 @@ export default function Gantt({ projects = [], onOpenProject }) {
           </div>
         </div>
 
-        <div className="gantt-wrap" style={{ padding: '16px', overflowX: 'auto' }}>
+        <div className="gantt-wrap table-scroll-wrap" style={{ overflowX: 'auto' }}>
           <table className="gantt-tbl" style={{ minWidth: '950px' }}>
             <thead>
               <tr>

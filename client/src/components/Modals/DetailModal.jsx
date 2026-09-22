@@ -80,7 +80,7 @@ export default function DetailModal({ isOpen, project, onClose, initialTab = 'sp
         </div>
 
         {/* TAB NAVIGATION HEADER */}
-        <div style={{ display: 'flex', gap: '4px', padding: '8px 20px 0', background: 'rgba(6, 42, 48, 0.6)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: '4px', padding: '8px 20px 0', background: 'var(--surface-secondary, #F4F8F6)', borderBottom: '1px solid var(--border)' }}>
           <button
             type="button"
             className={`tab-btn ${activeTab === 'specs' ? 'active' : ''}`}

@@ -206,13 +206,13 @@ export default function ImportDataModal({ isOpen, onClose, onImportSuccess }) {
             rows={10}
             style={{
               width: '100%',
-              background: 'rgba(4, 18, 20, 0.75)',
-              border: '1px solid var(--border-color, rgba(255, 255, 255, 0.12))',
+              background: 'var(--card-bg, #ffffff)',
+              border: '1px solid var(--border-color)',
               borderRadius: '8px',
               padding: '12px',
               fontFamily: 'var(--font-mono, monospace)',
               fontSize: '11.5px',
-              color: 'var(--text-main, #F2F7F7)',
+              color: 'var(--text-main)',
               lineHeight: 1.5,
               resize: 'vertical',
               boxSizing: 'border-box',
@@ -227,8 +227,8 @@ export default function ImportDataModal({ isOpen, onClose, onImportSuccess }) {
               style={{
                 padding: '14px',
                 borderRadius: '10px',
-                background: 'rgba(7, 26, 29, 0.7)',
-                border: '1px solid var(--border-color, rgba(255, 255, 255, 0.1))',
+                background: 'var(--surface-secondary, #F4F8F6)',
+                border: '1px solid var(--border-color)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '10px'

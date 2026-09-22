@@ -12,14 +12,14 @@ export default function RACI() {
           <div className="table-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Users size={16} color="var(--teal)" /> RACI Matrix — Responsibility Assignment
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--white-dim)' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
             <strong style={{ color: 'var(--amber)' }}>A</strong> = Accountable ·{' '}
-            <strong style={{ color: 'var(--red)' }}>R</strong> = Responsible ·{' '}
-            <strong style={{ color: 'var(--cyan)' }}>C</strong> = Consulted ·{' '}
-            <strong style={{ color: 'var(--white-dim)' }}>I</strong> = Informed
+            <strong style={{ color: 'var(--danger)' }}>R</strong> = Responsible ·{' '}
+            <strong style={{ color: 'var(--teal)' }}>C</strong> = Consulted ·{' '}
+            <strong style={{ color: 'var(--text-muted)' }}>I</strong> = Informed
           </div>
         </div>
-        <div className="modern-mat-table-wrap" style={{ margin: '16px' }}>
+        <div className="table-scroll-wrap modern-mat-table-wrap">
           <table className="modern-mat-table">
             <thead>
               <tr>
