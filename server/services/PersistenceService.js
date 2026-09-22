@@ -38,12 +38,7 @@ async function saveProject(project, operation = null) {
     store.projects.unshift(project);
   }
 
-  // 2. Persist to local JSON file (synchronous fallback — always succeeds)
-  if (typeof store.saveLocalStore === 'function') {
-    store.saveLocalStore();
-  }
-
-  // 3. Persist to PostgreSQL (non-blocking)
+  // 2. Persist to PostgreSQL (primary storage)
   if (isDbAvailable()) {
     const op = operation || (isNew ? 'create' : 'update');
     try {
@@ -72,6 +67,11 @@ async function saveProject(project, operation = null) {
     } catch (err) {
       logger.warn('PersistenceService', `DB ${operation} failed for project ${project.id}:`, err.message);
     }
+  } else {
+    // Fallback to local JSON file only when PostgreSQL is offline
+    if (typeof store.saveLocalStore === 'function') {
+      store.saveLocalStore();
+    }
   }
 }
 
@@ -91,18 +91,15 @@ async function softDeleteProject(id, user = null) {
   p.deletedBy = user ? { name: user.name, email: user.email, role: user.role } : null;
   p.updatedAt = new Date().toISOString();
 
-  // Save to local JSON store
-  if (typeof store.saveLocalStore === 'function') {
-    store.saveLocalStore();
-  }
-
-  // Persist soft delete to PostgreSQL
+  // Persist soft delete to PostgreSQL (or fallback to local store if DB offline)
   if (isDbAvailable()) {
     try {
       await ProjectsRepo.softDelete(id, user);
     } catch (err) {
       logger.warn('PersistenceService', `DB softDelete failed for project ${id}:`, err.message);
     }
+  } else if (typeof store.saveLocalStore === 'function') {
+    store.saveLocalStore();
   }
 
   return true;
@@ -133,16 +130,14 @@ async function restoreProject(id, user = null) {
     p.updatedBy = { name: user.name, email: user.email, role: user.role };
   }
 
-  if (typeof store.saveLocalStore === 'function') {
-    store.saveLocalStore();
-  }
-
   if (isDbAvailable()) {
     try {
       await ProjectsRepo.restore(id);
     } catch (err) {
       logger.warn('PersistenceService', `DB restore failed for project ${id}:`, err.message);
     }
+  } else if (typeof store.saveLocalStore === 'function') {
+    store.saveLocalStore();
   }
 
   return p;

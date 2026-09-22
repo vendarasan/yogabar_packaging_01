@@ -215,7 +215,17 @@ async function bootstrap() {
   const { testConnection } = require('./db');
   const { runMigrations } = require('./db/migrate');
   const { runSeeds } = require('./db/seed');
-  const { ProjectsRepo, UsersRepo, SpecLibraryRepo } = require('./db/repository');
+  const {
+    ProjectsRepo,
+    UsersRepo,
+    SpecLibraryRepo,
+    TasksRepo,
+    ApprovalsRepo,
+    CommentsRepo,
+    NotificationsRepo,
+    WebhooksRepo,
+    LogsRepo
+  } = require('./db/repository');
 
   let isDbConnected = false;
   try {
@@ -244,6 +254,26 @@ async function bootstrap() {
       if (Array.isArray(dbSpecs)) {
         store.specLibrary = dbSpecs;
         console.log(`📋 Loaded ${dbSpecs.length} spec(s) from Spec Library.`);
+      }
+      const dbTasks = await TasksRepo.getAll();
+      if (Array.isArray(dbTasks)) {
+        store.tasks = dbTasks;
+      }
+      const dbApprovals = await ApprovalsRepo.getAll();
+      if (Array.isArray(dbApprovals)) {
+        store.approvals = dbApprovals;
+      }
+      const dbComments = await CommentsRepo.getAll();
+      if (Array.isArray(dbComments)) {
+        store.comments = dbComments;
+      }
+      const dbWebhooks = await WebhooksRepo.getAll();
+      if (Array.isArray(dbWebhooks)) {
+        store.webhooks = dbWebhooks;
+      }
+      const dbLogs = await LogsRepo.getAll(500);
+      if (Array.isArray(dbLogs)) {
+        store.advanceLogs = dbLogs;
       }
     } catch (dbInitErr) {
       console.error('⚠️ DB Migration/Seed warning:', dbInitErr.message);

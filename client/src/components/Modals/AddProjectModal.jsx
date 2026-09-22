@@ -264,10 +264,10 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       const dataUrl = e.target.result;
       setMaterials(prev => {
         const copy = [...prev];
-        const m = { ...copy[matIdx], artworkUrl: dataUrl, artworkFileName: file.name };
+        const m = { ...copy[matIdx], artworkUrl: dataUrl, artworkFileName: file.name, hasRemovedArtwork: false };
         if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
         const artworkFiles = [{ name: file.name, url: dataUrl, type: 'image/png', uploadedAt: new Date().toISOString() }];
-        m.specSheet = { ...m.specSheet, artworkFiles };
+        m.specSheet = { ...m.specSheet, artworkFiles, hasRemovedArtwork: false };
         if (m.specSheet.variants && m.specSheet.variants.length > 0) {
           const curVars = [...m.specSheet.variants];
           curVars[0] = {
@@ -313,6 +313,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
             m.artworkUrl = dataUrl;
             m.artworkFileName = file.name;
             m.specSheet.artworkFiles = vArtFiles;
+            m.hasRemovedArtwork = false;
           }
         }
         copy[matIdx] = m;
@@ -326,20 +327,19 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
     setMaterials(prev => {
       const copy = [...prev];
       const m = { ...copy[matIdx], artworkUrl: '', artworkFileName: '', hasRemovedArtwork: true };
-      if (m.specSheet) {
-        m.specSheet = { ...m.specSheet, artworkFiles: [], hasRemovedArtwork: true };
-        if (m.specSheet.variants && m.specSheet.variants.length > 0) {
-          const curVars = [...m.specSheet.variants];
-          curVars[0] = {
-            ...curVars[0],
-            artworkUrl: '',
-            artworkFileName: '',
-            artworkFiles: [],
-            hasRemovedArtwork: true
-          };
-          m.specSheet.variants = curVars;
-          m.variants = curVars;
-        }
+      if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
+      m.specSheet = { ...m.specSheet, artworkFiles: [], hasRemovedArtwork: true };
+      if (m.specSheet.variants && m.specSheet.variants.length > 0) {
+        const curVars = [...m.specSheet.variants];
+        curVars[0] = {
+          ...curVars[0],
+          artworkUrl: '',
+          artworkFileName: '',
+          artworkFiles: [],
+          hasRemovedArtwork: true
+        };
+        m.specSheet.variants = curVars;
+        m.variants = curVars;
       }
       copy[matIdx] = m;
       return copy;
@@ -350,7 +350,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
     setMaterials(prev => {
       const copy = [...prev];
       const m = { ...copy[matIdx] };
-      if (!m.specSheet) return copy;
+      if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
       const curVars = [...(m.specSheet.variants || m.variants || [])];
       if (curVars[vIdx]) {
         curVars[vIdx] = {
@@ -366,6 +366,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
           m.artworkUrl = '';
           m.artworkFileName = '';
           m.specSheet.artworkFiles = [];
+          m.hasRemovedArtwork = true;
         }
       }
       copy[matIdx] = m;
@@ -386,7 +387,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
       
       if (isMultiple) {
-        let curVars = m.specSheet.variants || [];
+        let curVars = (m.specSheet?.variants?.length ? m.specSheet.variants : m.variants) || [];
         if (curVars.length <= 1) {
           const basePm = m.pmCode || m.specSheet.docHeader?.itemCode || generateDefaultPMCode(m.type, matIdx);
           const baseDigits = parseInt(basePm.match(/\d+$/)?.[0] || '50560', 10);
@@ -431,7 +432,7 @@ export default function AddProjectPage({ onCancel, onSave, editProject }) {
       const copy = [...prev];
       const m = { ...copy[matIdx] };
       if (!m.specSheet) m.specSheet = getDefaultSpecSheet(m.type, projectName, skuSize, matIdx);
-      const curVars = [...(m.specSheet.variants || [])];
+      const curVars = [...((m.specSheet?.variants?.length ? m.specSheet.variants : m.variants) || [])];
       const nextNum = curVars.length + 1;
       const basePm = m.pmCode || m.specSheet.docHeader?.itemCode || generateDefaultPMCode(m.type, matIdx);
       const baseDigits = parseInt(basePm.match(/\d+$/)?.[0] || '50560', 10);

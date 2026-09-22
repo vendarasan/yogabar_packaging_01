@@ -53,8 +53,15 @@ function loadLocalStore() {
   }
 }
 
-// Persist store to local_store.json
+// Persist store to local_store.json (only used as an offline fallback when PostgreSQL is not connected)
 function saveLocalStore() {
+  try {
+    const { isDbAvailable } = require('./db');
+    if (isDbAvailable()) {
+      return; // Database is the source of truth; do not write to local JSON
+    }
+  } catch (e) {}
+
   try {
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
@@ -78,9 +85,6 @@ function saveLocalStore() {
     console.warn('⚠️ [Store] Could not save local_store.json:', err.message);
   }
 }
-
-// Initial load
-loadLocalStore();
 
 store.loadLocalStore = loadLocalStore;
 store.saveLocalStore = saveLocalStore;

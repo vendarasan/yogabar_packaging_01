@@ -24,13 +24,13 @@ const { validateFileList } = require('../middleware/uploadSecurity');
 
 const { isDbAvailable } = require('../db');
 
-// Intercept all mutating responses on /:id routes to automatically persist to local store
+// Intercept all mutating responses on /:id routes to automatically persist to local store if DB is offline
 router.use('/:id', (req, res, next) => {
   const origJson = res.json.bind(res);
   res.json = function (body) {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-        if (typeof store.saveLocalStore === 'function') {
+        if (!isDbAvailable() && typeof store.saveLocalStore === 'function') {
           store.saveLocalStore();
         }
       }

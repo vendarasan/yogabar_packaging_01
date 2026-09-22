@@ -133,7 +133,7 @@ function normalizeVariants(rawVariants, defaultItemCode, defaultName, defaultAwC
       if (files.length === 0 && (v.artworkUrl || v.artwork)) {
         files = [{ name: `${vName} Artwork`, url: v.artworkUrl || v.artwork, type: 'image/png' }];
       }
-      if (files.length === 0 && safeDefaultFiles.length > 0) {
+      if (files.length === 0 && idx === 0 && safeDefaultFiles.length > 0) {
         files = safeDefaultFiles;
       }
     } else {
@@ -2832,11 +2832,7 @@ export default function SpecModal({
                                       type="button"
                                       className="btn btn-outline btn-sm"
                                       style={{ padding: '3px 8px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                      onClick={() => setPreviewArtworkModal({
-                                        url: vActiveFile.url,
-                                        name: vActiveFile.name,
-                                        title: `${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`
-                                      })}
+                                      onClick={() => openArtworkFile(vActiveFile, `${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`)}
                                       title="Open full-resolution preview"
                                     >
                                       <Eye size={12} />
@@ -2855,11 +2851,7 @@ export default function SpecModal({
                                 </div>
 
                                 <div
-                                  onClick={() => setPreviewArtworkModal({
-                                    url: vActiveFile.url,
-                                    name: vActiveFile.name,
-                                    title: `${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`
-                                  })}
+                                  onClick={() => openArtworkFile(vActiveFile, `${v.variantName || 'Variant'} (${v.itemCode || 'PM-TBD'}) — Artwork Reference`)}
                                   style={{
                                     width: '100%',
                                     minHeight: '160px',
