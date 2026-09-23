@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, X, RotateCcw, Play, Tag, ShoppingCart, Settings, FileText, CheckCircle2, User, Clock, Check } from 'lucide-react';
+import {
+  Bell,
+  X,
+  RotateCcw,
+  Play,
+  Tag,
+  ShoppingCart,
+  Settings,
+  FileText,
+  CheckCircle2,
+  User,
+  Clock,
+  CheckCheck
+} from 'lucide-react';
 import { markSeen } from '../../api';
 
 export default function ActivityStreamModal({
@@ -49,55 +62,74 @@ export default function ActivityStreamModal({
   });
 
   return (
-    <div className="modal-overlay open" onClick={onClose} style={{ zIndex: 1000 }}>
+    <div className="modal-overlay open" onClick={onClose} style={{ zIndex: 1100 }}>
       <div
         className="modal activity-stream-modal"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '500px',
+          width: '560px',
           maxWidth: '94vw',
           maxHeight: '85vh',
           display: 'flex',
           flexDirection: 'column',
-          background: 'var(--card-bg, #0B2529)',
-          border: '1px solid var(--border-color, rgba(255,255,255,0.1))',
-          borderRadius: '12px',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          background: 'var(--card-bg, #FFFFFF)',
+          border: '1px solid var(--border-color, #E2EBE6)',
+          borderRadius: '14px',
+          boxShadow: '0 20px 50px -10px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.06)',
           overflow: 'hidden'
         }}
       >
         {/* MODAL HEADER */}
         <div
-          className="modal-head"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '14px 18px',
-            borderBottom: '1px solid var(--border-color)',
-            background: 'var(--bg-sidebar, #06171A)'
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--border-color, #E2EBE6)',
+            background: 'var(--card-bg, #FFFFFF)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Bell size={16} style={{ color: 'var(--teal)' }} />
-            <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-main)' }}>
-              Live Activity Stream
-            </span>
-            {unreadCount > 0 && (
-              <span
-                style={{
-                  fontSize: '9.5px',
-                  fontWeight: 700,
-                  background: 'rgba(0, 200, 215, 0.2)',
-                  color: 'var(--teal)',
-                  border: '1px solid rgba(0, 200, 215, 0.4)',
-                  padding: '1px 6px',
-                  borderRadius: '10px'
-                }}
-              >
-                {unreadCount} new
-              </span>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'rgba(0, 135, 103, 0.12)',
+                color: 'var(--teal, #008767)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Bell size={17} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-main, #102B36)' }}>
+                  Live Activity Stream
+                </span>
+                {unreadCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      background: '#E8F5E9',
+                      color: 'var(--teal, #008767)',
+                      border: '1px solid #A7F3D0',
+                      padding: '1px 7px',
+                      borderRadius: '10px'
+                    }}
+                  >
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted, #829A9E)' }}>
+                Real-time governance audit trail across all packaging projects
+              </p>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -106,8 +138,21 @@ export default function ActivityStreamModal({
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={handleMarkSeen}
-                style={{ fontSize: '11px', padding: '3px 9px', color: 'var(--text-secondary)' }}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  color: 'var(--teal, #008767)',
+                  background: 'rgba(0, 135, 103, 0.08)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(0, 135, 103, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer'
+                }}
               >
+                <CheckCheck size={13} />
                 Mark read
               </button>
             )}
@@ -118,15 +163,17 @@ export default function ActivityStreamModal({
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-muted)',
+                color: 'var(--text-muted, #829A9E)',
                 cursor: 'pointer',
-                padding: '4px',
-                lineHeight: 1,
-                borderRadius: '4px'
+                padding: '6px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
               title="Close (Esc)"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -137,9 +184,9 @@ export default function ActivityStreamModal({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '8px 16px',
-            background: 'rgba(0,0,0,0.2)',
-            borderBottom: '1px solid var(--border-light)',
+            padding: '10px 18px',
+            background: 'var(--surface-secondary, #F3F8F5)',
+            borderBottom: '1px solid var(--border-color, #E2EBE6)',
             overflowX: 'auto'
           }}
         >
@@ -151,27 +198,31 @@ export default function ActivityStreamModal({
             { id: 'REVOKES', label: 'Revokes' },
             { id: 'PO', label: 'Purchase Orders' },
             { id: 'CODES', label: 'PM/FG Codes' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setFilter(tab.id)}
-              style={{
-                fontSize: '10px',
-                fontWeight: filter === tab.id ? 700 : 500,
-                padding: '3px 9px',
-                borderRadius: '9999px',
-                background: filter === tab.id ? 'var(--teal)' : 'rgba(255,255,255,0.05)',
-                color: filter === tab.id ? '#04171A' : 'var(--text-secondary)',
-                border: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          ].map(tab => {
+            const isActive = filter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFilter(tab.id)}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: isActive ? 600 : 500,
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  background: isActive ? 'var(--teal, #008767)' : '#FFFFFF',
+                  color: isActive ? '#FFFFFF' : 'var(--text-secondary, #526B74)',
+                  border: `1px solid ${isActive ? 'var(--teal, #008767)' : 'var(--border-color, #E2EBE6)'}`,
+                  boxShadow: isActive ? '0 1px 3px rgba(0, 135, 103, 0.25)' : 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* LOGS LIST */}
@@ -180,15 +231,15 @@ export default function ActivityStreamModal({
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '12px 16px',
+            padding: '14px 18px',
             display: 'flex',
             flexDirection: 'column',
             gap: '10px'
           }}
         >
           {!filteredLogs.length ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: '12px' }}>
-              No activity matching this filter.
+            <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted, #829A9E)', fontSize: '13px' }}>
+              No activity records match this filter.
             </div>
           ) : (
             filteredLogs.slice(0, 50).map(e => {
@@ -202,36 +253,36 @@ export default function ActivityStreamModal({
               const isPM = act === 'PMCODE_UPDATE';
               const isFG = act === 'FGCODE_UPDATE';
 
-              let badgeColor = '#4F8CFF';
+              let badgeColor = '#0284C7';
               let badgeText = act.replace(/_/g, ' ') || 'ACTIVITY';
               let ActionIcon = FileText;
 
               if (isRevoke) {
-                badgeColor = 'var(--danger, #F05D6C)';
+                badgeColor = '#DC2626';
                 badgeText = 'STAGE REVOKE';
                 ActionIcon = RotateCcw;
               } else if (isAdvance) {
-                badgeColor = 'var(--success, #38C98A)';
+                badgeColor = '#008767';
                 badgeText = 'STAGE ADVANCE';
                 ActionIcon = Play;
               } else if (isArtwork) {
-                badgeColor = '#00C8D7';
+                badgeColor = '#0284C7';
                 badgeText = act === 'ARTWORK_APPROVED' ? 'ARTWORK APPROVED' : (e.metadata?.versionTag ? `ARTWORK ${e.metadata.versionTag}` : 'ARTWORK');
                 ActionIcon = FileText;
               } else if (isSpecs) {
-                badgeColor = '#A855F7';
+                badgeColor = '#7C3AED';
                 badgeText = act === 'SPECIFICATION_APPROVED' || act === 'SPEC_APPROVED_HEAD' ? 'SPEC APPROVED' : 'SPEC SHEET';
                 ActionIcon = CheckCircle2;
               } else if (isPM) {
-                badgeColor = 'var(--teal, #00C8D7)';
+                badgeColor = '#008767';
                 badgeText = 'PMCODE';
                 ActionIcon = Tag;
               } else if (isFG) {
-                badgeColor = 'var(--teal, #00C8D7)';
+                badgeColor = '#008767';
                 badgeText = 'FGCODE';
                 ActionIcon = Tag;
               } else if (isPO) {
-                badgeColor = '#4F8CFF';
+                badgeColor = '#0284C7';
                 badgeText = 'PO UPDATE';
                 ActionIcon = ShoppingCart;
               }
@@ -243,41 +294,46 @@ export default function ActivityStreamModal({
               const userName = e.user?.name || (typeof e.user === 'string' ? e.user : (e.by || e.userName || 'System'));
               const userRole = e.user?.role || e.userRole || e.byRole || '';
 
-              const oldVal = e.oldValue !== undefined ? e.oldValue : e.metadata?.oldValue;
-              const newVal = e.newValue !== undefined ? e.newValue : e.metadata?.newValue;
-              const hasBeforeAfter = (oldVal !== undefined && oldVal !== null) || (newVal !== undefined && newVal !== null);
+              const rawOld = e.oldValue !== undefined ? e.oldValue : e.metadata?.oldValue;
+              const rawNew = e.newValue !== undefined ? e.newValue : e.metadata?.newValue;
+
+              const isValEmpty = (val) => val === undefined || val === null || String(val).trim() === '' || String(val).toLowerCase() === 'null' || String(val).toLowerCase() === 'undefined';
+              const cleanOldVal = !isValEmpty(rawOld) ? String(rawOld) : null;
+              const cleanNewVal = !isValEmpty(rawNew) ? String(rawNew) : null;
+
               const reasonText = e.reason || e.metadata?.reason;
 
               return (
                 <div
                   key={e.id || e.timestamp}
                   style={{
-                    background: isUnread ? 'rgba(0, 200, 215, 0.04)' : 'var(--surface-secondary, #0D2D32)',
-                    border: `1px solid ${isUnread ? 'rgba(0, 200, 215, 0.25)' : 'var(--border-color, rgba(255,255,255,0.06))'}`,
-                    borderLeft: `3px solid ${badgeColor}`,
+                    background: isUnread ? '#F7FBF9' : '#FFFFFF',
+                    border: `1px solid ${isUnread ? '#A7F3D0' : 'var(--border-color, #E2EBE6)'}`,
+                    borderLeft: `4px solid ${badgeColor}`,
                     borderRadius: '8px',
-                    padding: '10px 12px',
+                    padding: '12px 14px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '4px',
+                    gap: '5px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                     transition: 'all 0.15s ease'
                   }}
                 >
                   {/* TOP ROW: TITLE & BADGE */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                      <ActionIcon size={13} style={{ color: badgeColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-main)' }}>
+                      <ActionIcon size={14} style={{ color: badgeColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-main, #102B36)' }}>
                         {e.title || 'Project Activity'}
                       </span>
                     </div>
                     <span
                       style={{
-                        fontSize: '8.5px',
+                        fontSize: '9.5px',
                         fontWeight: 700,
-                        padding: '1px 6px',
+                        padding: '2px 7px',
                         borderRadius: '4px',
-                        background: `${badgeColor}18`,
+                        background: `${badgeColor}12`,
                         color: badgeColor,
                         border: `1px solid ${badgeColor}35`,
                         letterSpacing: '0.04em',
@@ -291,24 +347,69 @@ export default function ActivityStreamModal({
                   {/* PROJECT CONTEXT & STABLE ENTITY */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                     {e.projectName && (
-                      <div style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--teal)', lineHeight: 1.3 }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--teal, #008767)', lineHeight: 1.3 }}>
                         {e.projectName} {e.fgCode ? `(${e.fgCode})` : ''}
                       </div>
                     )}
                     {e.entityId && (
-                      <span style={{ fontSize: '8.5px', fontFamily: 'monospace', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '1px 4px', borderRadius: '3px' }}>
+                      <span
+                        style={{
+                          fontSize: '9.5px',
+                          fontFamily: 'var(--font-mono, monospace)',
+                          color: 'var(--text-muted, #829A9E)',
+                          background: 'var(--surface-secondary, #F3F8F5)',
+                          border: '1px solid var(--border-color, #E2EBE6)',
+                          padding: '1px 6px',
+                          borderRadius: '4px'
+                        }}
+                      >
                         {e.entityId}
                       </span>
                     )}
                   </div>
 
-                  {/* BEFORE / AFTER TRANSITION */}
-                  {hasBeforeAfter && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '9.5px', background: 'rgba(0,0,0,0.3)', padding: '3px 8px', borderRadius: '4px', margin: '2px 0' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Previous:</span>
-                      <span style={{ color: '#F05D6C', textDecoration: 'line-through' }}>{String(oldVal ?? '—')}</span>
-                      <span style={{ color: 'var(--teal)' }}>➔</span>
-                      <span style={{ color: '#38C98A', fontWeight: 600 }}>{String(newVal ?? '—')}</span>
+                  {/* BEFORE / AFTER TRANSITION — NO MORE "Previous: null" */}
+                  {cleanOldVal && cleanNewVal && (
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '10.5px',
+                        background: 'var(--surface-secondary, #F3F8F5)',
+                        border: '1px solid var(--border-color, #E2EBE6)',
+                        padding: '3px 8px',
+                        borderRadius: '5px',
+                        width: 'fit-content',
+                        margin: '2px 0'
+                      }}
+                    >
+                      <span style={{ color: 'var(--text-muted, #829A9E)' }}>Previous:</span>
+                      <span style={{ color: '#DC2626', textDecoration: 'line-through', fontWeight: 500 }}>{cleanOldVal}</span>
+                      <span style={{ color: 'var(--text-muted, #829A9E)' }}>➔</span>
+                      <span style={{ color: '#16A34A', fontWeight: 600 }}>{cleanNewVal}</span>
+                    </div>
+                  )}
+
+                  {!cleanOldVal && cleanNewVal && (
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '10.5px',
+                        background: 'var(--surface-secondary, #F3F8F5)',
+                        border: '1px solid var(--border-color, #E2EBE6)',
+                        padding: '3px 8px',
+                        borderRadius: '5px',
+                        width: 'fit-content',
+                        margin: '2px 0'
+                      }}
+                    >
+                      <span style={{ color: 'var(--text-muted, #829A9E)' }}>Status:</span>
+                      <span style={{ color: '#008767', fontWeight: 600, background: '#DCFCE7', padding: '1px 6px', borderRadius: '4px' }}>
+                        {cleanNewVal}
+                      </span>
                     </div>
                   )}
 
@@ -316,14 +417,14 @@ export default function ActivityStreamModal({
                   {e.details && (
                     <div
                       style={{
-                        fontSize: '10px',
-                        color: 'var(--text-secondary)',
-                        background: 'rgba(0,0,0,0.25)',
-                        padding: '5px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255,255,255,0.04)',
+                        fontSize: '11px',
+                        color: 'var(--text-body, #243E48)',
+                        background: 'var(--surface-secondary, #F3F8F5)',
+                        border: '1px solid var(--border-color, #E2EBE6)',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
                         marginTop: '2px',
-                        lineHeight: 1.35
+                        lineHeight: 1.45
                       }}
                     >
                       {e.details}
@@ -332,7 +433,17 @@ export default function ActivityStreamModal({
 
                   {/* USER REASON */}
                   {reasonText && (
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255,255,255,0.03)', padding: '2px 6px', borderRadius: '3px' }}>
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        color: 'var(--text-secondary, #526B74)',
+                        fontStyle: 'italic',
+                        background: '#FEF3C7',
+                        border: '1px solid #FDE68A',
+                        padding: '3px 8px',
+                        borderRadius: '4px'
+                      }}
+                    >
                       💬 Reason: &ldquo;{reasonText}&rdquo;
                     </div>
                   )}
@@ -344,12 +455,12 @@ export default function ActivityStreamModal({
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       marginTop: '4px',
-                      fontSize: '9.5px',
-                      color: 'var(--text-muted)'
+                      fontSize: '10px',
+                      color: 'var(--text-secondary, #526B74)'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <User size={10} style={{ opacity: 0.7 }} />
+                      <User size={11} style={{ opacity: 0.7 }} />
                       <span>{userName}</span>
                       {userRole && (
                         <span style={{ opacity: 0.6 }}>({userRole})</span>
@@ -357,8 +468,10 @@ export default function ActivityStreamModal({
                     </div>
                     {timeFormatted && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Clock size={10} style={{ opacity: 0.7 }} />
-                        <span style={{ fontFamily: 'var(--font-mono)' }}>{timeFormatted}</span>
+                        <Clock size={11} style={{ opacity: 0.7 }} />
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-muted, #829A9E)' }}>
+                          {timeFormatted}
+                        </span>
                       </div>
                     )}
                   </div>

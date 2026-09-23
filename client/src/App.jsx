@@ -690,6 +690,9 @@ export default function App() {
         isOpen={isNotificationCenterOpen}
         onClose={() => setIsNotificationCenterOpen(false)}
         onOpenProject={handleOpenProjectById}
+        logs={logs}
+        seenAt={seenAt}
+        onLogsMarkedSeen={(ts) => setSeenAt(ts)}
       />
 
       {/* GLOBAL SEARCH MODAL */}
